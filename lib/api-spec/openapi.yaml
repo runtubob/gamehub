@@ -3,13 +3,24 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API specification for GameHub PS Rental Management
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: units
+    description: PlayStation unit management
+  - name: products
+    description: Product management
+  - name: rentals
+    description: Rental session management
+  - name: transactions
+    description: Transaction (product sales) management
+  - name: dashboard
+    description: Dashboard summary endpoints
+
 paths:
   /healthz:
     get:
@@ -24,6 +35,343 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /units:
+    get:
+      operationId: listUnits
+      tags: [units]
+      summary: List all PlayStation units
+      responses:
+        "200":
+          description: List of units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Unit"
+    post:
+      operationId: createUnit
+      tags: [units]
+      summary: Add a new PlayStation unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUnitBody"
+      responses:
+        "201":
+          description: Unit created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+
+  /units/{id}:
+    get:
+      operationId: getUnit
+      tags: [units]
+      summary: Get a specific unit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unit details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+    put:
+      operationId: updateUnit
+      tags: [units]
+      summary: Update a PlayStation unit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUnitBody"
+      responses:
+        "200":
+          description: Unit updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+    delete:
+      operationId: deleteUnit
+      tags: [units]
+      summary: Delete a PlayStation unit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unit deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Add a new product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a specific product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductBody"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /rentals:
+    get:
+      operationId: listRentals
+      tags: [rentals]
+      summary: List all rentals
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, completed]
+        - name: date
+          in: query
+          schema:
+            type: string
+            description: Filter by date (YYYY-MM-DD)
+      responses:
+        "200":
+          description: List of rentals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rental"
+    post:
+      operationId: startRental
+      tags: [rentals]
+      summary: Start a rental session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRentalBody"
+      responses:
+        "201":
+          description: Rental started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rental"
+
+  /rentals/active:
+    get:
+      operationId: listActiveRentals
+      tags: [rentals]
+      summary: List currently active rentals with elapsed time
+      responses:
+        "200":
+          description: Active rentals with elapsed time
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActiveRental"
+
+  /rentals/{id}/stop:
+    post:
+      operationId: stopRental
+      tags: [rentals]
+      summary: Stop an active rental session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Rental stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rental"
+
+  /transactions:
+    get:
+      operationId: listTransactions
+      tags: [transactions]
+      summary: List all transactions
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            description: Filter by date (YYYY-MM-DD)
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [rental, product]
+      responses:
+        "200":
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+    post:
+      operationId: createTransaction
+      tags: [transactions]
+      summary: Record a product sale transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionBody"
+      responses:
+        "201":
+          description: Transaction recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+
+  /transactions/recent:
+    get:
+      operationId: listRecentTransactions
+      tags: [transactions]
+      summary: Get recent transactions
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard summary statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +382,263 @@ components:
       required:
         - status
 
+    Unit:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+          enum: [available, occupied]
+        hourlyRate:
+          type: integer
+          description: Rate in IDR per hour
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - status
+        - hourlyRate
+        - createdAt
+
+    CreateUnitBody:
+      type: object
+      properties:
+        name:
+          type: string
+        hourlyRate:
+          type: integer
+      required:
+        - name
+        - hourlyRate
+
+    UpdateUnitBody:
+      type: object
+      properties:
+        name:
+          type: string
+        hourlyRate:
+          type: integer
+        status:
+          type: string
+          enum: [available, occupied]
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: integer
+          description: Price in IDR
+        stock:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - price
+        - stock
+        - createdAt
+
+    CreateProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        price:
+          type: integer
+        stock:
+          type: integer
+      required:
+        - name
+        - price
+        - stock
+
+    UpdateProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        price:
+          type: integer
+        stock:
+          type: integer
+
+    Rental:
+      type: object
+      properties:
+        id:
+          type: integer
+        unitId:
+          type: integer
+        unitName:
+          type: string
+        customerName:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+        durationMinutes:
+          type: integer
+          nullable: true
+        totalCost:
+          type: integer
+          nullable: true
+          description: Total cost in IDR
+        status:
+          type: string
+          enum: [active, completed]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - unitId
+        - unitName
+        - customerName
+        - startTime
+        - status
+        - createdAt
+
+    ActiveRental:
+      type: object
+      properties:
+        id:
+          type: integer
+        unitId:
+          type: integer
+        unitName:
+          type: string
+        customerName:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        elapsedMinutes:
+          type: integer
+        estimatedCost:
+          type: integer
+          description: Estimated cost so far in IDR
+        hourlyRate:
+          type: integer
+      required:
+        - id
+        - unitId
+        - unitName
+        - customerName
+        - startTime
+        - elapsedMinutes
+        - estimatedCost
+        - hourlyRate
+
+    StartRentalBody:
+      type: object
+      properties:
+        unitId:
+          type: integer
+        customerName:
+          type: string
+      required:
+        - unitId
+        - customerName
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [rental, product]
+        description:
+          type: string
+        amount:
+          type: integer
+          description: Amount in IDR
+        rentalId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - description
+        - amount
+        - createdAt
+
+    CreateTransactionBody:
+      type: object
+      properties:
+        productId:
+          type: integer
+        quantity:
+          type: integer
+          default: 1
+      required:
+        - productId
+
+    DashboardStats:
+      type: object
+      properties:
+        todayIncome:
+          type: integer
+          description: Total income today in IDR
+        activeRentals:
+          type: integer
+        availableUnits:
+          type: integer
+        totalUnits:
+          type: integer
+        totalProducts:
+          type: integer
+        todayTransactions:
+          type: integer
+        weeklyIncome:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyIncome"
+      required:
+        - todayIncome
+        - activeRentals
+        - availableUnits
+        - totalUnits
+        - totalProducts
+        - todayTransactions
+        - weeklyIncome
+
+    DailyIncome:
+      type: object
+      properties:
+        date:
+          type: string
+        income:
+          type: integer
+      required:
+        - date
+        - income
+
+    DeleteResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
