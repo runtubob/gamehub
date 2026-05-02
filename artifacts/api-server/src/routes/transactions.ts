@@ -66,7 +66,8 @@ router.post("/transactions/batch", requireAuth, async (req, res) => {
       const [tx] = await db.insert(transactionsTable).values({
         type: "product",
         description: `${product.name} x${qty} ${product.packLabel ?? "pack"}`,
-        amount, costAmount, paymentMethod, productId: product.id, quantity: qty,
+        amount, costAmount, paymentMethod, productId: product.id,
+        quantity: stockDeducted, // simpan unit aktual (bukan jumlah bungkus)
       }).returning();
       await db.update(productsTable).set({ stock: product.stock - stockDeducted }).where(eq(productsTable.id, product.id));
       results.push(tx);
@@ -113,7 +114,8 @@ router.post("/transactions", requireAuth, async (req, res) => {
   if (product.stock < stockDeducted) { res.status(400).json({ error: "Stok tidak cukup" }); return; }
   const [transaction] = await db.insert(transactionsTable).values({
     type: "product", description, amount, costAmount,
-    paymentMethod: parsed.data.paymentMethod ?? "cash", productId: product.id, quantity,
+    paymentMethod: parsed.data.paymentMethod ?? "cash", productId: product.id,
+    quantity: stockDeducted, // simpan unit aktual yang dikurangi dari stok
   }).returning();
   await db.update(productsTable).set({ stock: product.stock - stockDeducted }).where(eq(productsTable.id, product.id));
   res.status(201).json(transaction);

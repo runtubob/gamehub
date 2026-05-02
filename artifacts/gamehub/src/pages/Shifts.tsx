@@ -57,6 +57,8 @@ export default function Shifts() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const lastClosedShift = allShifts?.find((s) => s.status === "closed");
+
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
   const [openingCash, setOpeningCash] = useState("");
@@ -186,19 +188,49 @@ export default function Shifts() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
             <h3 className="font-bold text-foreground text-lg">Mulai Shift</h3>
+
+            {/* Info kas dari shift sebelumnya */}
+            {lastClosedShift && lastClosedShift.closingCash !== null && lastClosedShift.closingCash !== undefined ? (
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Wallet size={13} className="text-primary shrink-0" />
+                  <p className="text-xs font-semibold text-primary">Kas dari shift sebelumnya</p>
+                </div>
+                <p className="text-lg font-bold text-foreground">{formatRp(lastClosedShift.closingCash)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Ditutup oleh <span className="text-foreground font-medium">{lastClosedShift.userName}</span> pukul {formatTime(lastClosedShift.endTime!)}. Masukkan jumlah ini sebagai kas awal jika kas belum diambil.
+                </p>
+                <button
+                  onClick={() => setOpeningCash(String(lastClosedShift.closingCash))}
+                  className="text-xs text-primary hover:underline font-medium"
+                >
+                  Gunakan jumlah ini ({formatRp(lastClosedShift.closingCash)})
+                </button>
+              </div>
+            ) : (
+              <div className="bg-muted/20 border border-border rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={13} className="text-muted-foreground shrink-0" />
+                  <p className="text-xs text-muted-foreground">Belum ada riwayat shift. Hitung uang kas yang ada di laci kasir sekarang.</p>
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Jumlah Kas Awal (Rp)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Kas Awal — Uang di Laci Kasir (Rp)</label>
               <input
                 value={openingCash}
                 onChange={(e) => setOpeningCash(e.target.value)}
                 placeholder="0"
                 type="number"
                 className={inputClass}
+                autoFocus
               />
+              <p className="text-xs text-muted-foreground mt-1">Hitung fisik uang tunai di laci kasir sebelum shift dimulai.</p>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Catatan (opsional)</label>
-              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="cth. Shift pagi" className={inputClass} />
+              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="cth. Shift pagi, Shift malam..." className={inputClass} />
             </div>
             <div className="flex gap-2">
               <button onClick={handleStart} disabled={startShift.isPending} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
