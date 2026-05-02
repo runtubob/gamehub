@@ -7,6 +7,7 @@ export const transactionsTable = pgTable("transactions", {
   type: text("type").notNull(),
   description: text("description").notNull(),
   amount: integer("amount").notNull(),
+  costAmount: integer("cost_amount").notNull().default(0),
   paymentMethod: text("payment_method").notNull().default("cash"),
   rentalId: integer("rental_id"),
   productId: integer("product_id"),

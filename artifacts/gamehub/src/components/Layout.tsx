@@ -2,15 +2,25 @@ import { Link, useLocation } from "wouter";
 import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, Gamepad2, Package, Receipt, Zap, TrendingDown, Box,
-  Pencil, Upload, X, Check, BarChart3, Users, LogOut, ChevronDown, Menu, Shield
+  Pencil, Upload, X, Check, BarChart3, Users, LogOut, Menu, Shield, Crown
 } from "lucide-react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth, canAccess } from "@/context/AuthContext";
+import { useAuth, isAdminOrAbove } from "@/context/AuthContext";
 
 const LOGO_KEY = "shopLogo";
-const ROLE_LABELS: Record<string, string> = { admin: "Admin", owner: "Owner", karyawan: "Karyawan" };
-const ROLE_COLORS: Record<string, string> = { admin: "text-chart-1", owner: "text-primary", karyawan: "text-muted-foreground" };
+const ROLE_LABELS: Record<string, string> = {
+  superadmin: "Super Admin",
+  admin: "Admin",
+  owner: "Admin",
+  karyawan: "Karyawan",
+};
+const ROLE_COLORS: Record<string, string> = {
+  superadmin: "text-chart-1",
+  admin: "text-primary",
+  owner: "text-primary",
+  karyawan: "text-muted-foreground",
+};
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -27,13 +37,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const isAdmin = isAdminOrAbove(user?.role);
+  const isSuperAdmin = user?.role === "superadmin";
+
   useEffect(() => {
     const stored = localStorage.getItem(LOGO_KEY);
     if (stored) setLogo(stored);
   }, []);
 
   const openEdit = () => {
-    if (!canAccess(user?.role, "settings")) return;
+    if (!isAdmin) return;
     setEditName(settings?.shopName ?? "GameHub");
     setEditTagline(settings?.tagline ?? "PS Rental Manager");
     setPreviewLogo(logo);
@@ -60,8 +73,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const isAdmin = user?.role === "admin" || user?.role === "owner";
-
   const navItems = [
     ...(isAdmin ? [{ href: "/", icon: LayoutDashboard, label: "Dashboard" }] : []),
     { href: isAdmin ? "/units" : "/", icon: Gamepad2, label: "Unit PlayStation" },
@@ -81,7 +92,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const SidebarContent = () => (
     <>
-      {/* Brand */}
       <div className="px-4 py-4 border-b border-sidebar-border">
         <div className={`flex items-center gap-2.5 ${isAdmin ? "group cursor-pointer" : ""}`} onClick={isAdmin ? openEdit : undefined}>
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden shrink-0">
@@ -95,7 +105,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive = href === "/" ? location === "/" || location === "/units" : location.startsWith(href);
@@ -108,33 +117,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      {/* User footer */}
       <div className="px-3 py-3 border-t border-sidebar-border space-y-1">
         <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-muted/20">
           <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-            <Shield size={12} className="text-primary" />
+            {isSuperAdmin ? <Crown size={12} className="text-chart-1" /> : <Shield size={12} className="text-primary" />}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-foreground truncate">{user?.name}</p>
-            <p className={`text-[10px] ${ROLE_COLORS[user?.role ?? ""] ?? "text-muted-foreground"}`}>{ROLE_LABELS[user?.role ?? ""] ?? user?.role}</p>
+            <p className={`text-[10px] font-medium ${ROLE_COLORS[user?.role ?? ""] ?? "text-muted-foreground"}`}>
+              {ROLE_LABELS[user?.role ?? ""] ?? user?.role}
+            </p>
           </div>
           <button onClick={logout} title="Keluar" className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
             <LogOut size={14} />
           </button>
         </div>
-        <p className="text-[10px] text-muted-foreground text-center">GameHub v1.0</p>
+        <p className="text-[10px] text-muted-foreground text-center">GameHub v2.0</p>
       </div>
     </>
   );
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-60 shrink-0 bg-sidebar border-r border-sidebar-border flex-col">
         <SidebarContent />
       </aside>
 
-      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex">
           <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
@@ -144,9 +152,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile topbar */}
         <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-sidebar shrink-0">
           <button onClick={() => setSidebarOpen(true)} className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted">
             <Menu size={20} />
@@ -158,11 +164,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <span className="font-bold text-sm text-foreground">{shopName}</span>
           </div>
         </div>
-
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
 
-      {/* Settings Modal */}
       {showEdit && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">

@@ -9,9 +9,9 @@ export async function seedAdminUser() {
   await db.insert(usersTable).values({
     username: "admin",
     password: hashed,
-    name: "Administrator",
-    role: "admin",
+    name: "Super Administrator",
+    role: "superadmin",
     active: true,
   });
-  console.log("[seed] Admin user created: username=admin password=admin123");
+  console.log("[seed] Super Admin user created: username=admin password=admin123");
 }

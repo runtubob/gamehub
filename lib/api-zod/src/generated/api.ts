@@ -519,6 +519,7 @@ export const ListTransactionsResponseItem = zod.object({
   type: zod.enum(["rental", "product"]),
   description: zod.string(),
   amount: zod.number(),
+  costAmount: zod.number(),
   paymentMethod: zod.enum(["cash", "qris"]),
   rentalId: zod.number().nullish(),
   productId: zod.number().nullish(),
@@ -547,6 +548,14 @@ export const CreateTransactionBatchBody = zod.object({
   ),
 });
 
+export const DeleteTransactionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteTransactionResponse = zod.object({
+  success: zod.boolean(),
+});
+
 export const listRecentTransactionsQueryLimitDefault = 10;
 
 export const ListRecentTransactionsQueryParams = zod.object({
@@ -558,6 +567,7 @@ export const ListRecentTransactionsResponseItem = zod.object({
   type: zod.enum(["rental", "product"]),
   description: zod.string(),
   amount: zod.number(),
+  costAmount: zod.number(),
   paymentMethod: zod.enum(["cash", "qris"]),
   rentalId: zod.number().nullish(),
   productId: zod.number().nullish(),
@@ -632,6 +642,22 @@ export const GetDashboardResponse = zod.object({
       income: zod.number(),
     }),
   ),
+  topProducts: zod.array(
+    zod.object({
+      productId: zod.number(),
+      productName: zod.string(),
+      totalQty: zod.number(),
+      totalRevenue: zod.number(),
+    }),
+  ),
+  topUnits: zod.array(
+    zod.object({
+      unitId: zod.number(),
+      unitName: zod.string(),
+      totalSessions: zod.number(),
+      totalRevenue: zod.number(),
+    }),
+  ),
 });
 
 export const GetFinancialReportQueryParams = zod.object({
@@ -681,6 +707,7 @@ export const GetFinancialReportResponse = zod.object({
       type: zod.enum(["rental", "product"]),
       description: zod.string(),
       amount: zod.number(),
+      costAmount: zod.number(),
       paymentMethod: zod.enum(["cash", "qris"]),
       rentalId: zod.number().nullish(),
       productId: zod.number().nullish(),

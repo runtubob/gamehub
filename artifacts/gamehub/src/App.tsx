@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/Layout";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AuthProvider, useAuth, isAdminOrAbove } from "@/context/AuthContext";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Units from "@/pages/Units";
@@ -38,26 +38,26 @@ function ProtectedApp() {
 
   if (!user) return <Login />;
 
-  const isKaryawan = user.role === "karyawan";
+  const isAdmin = isAdminOrAbove(user.role);
 
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={isKaryawan ? Units : Dashboard} />
-        {!isKaryawan && <Route path="/dashboard" component={Dashboard} />}
+        <Route path="/" component={isAdmin ? Dashboard : Units} />
+        {isAdmin && <Route path="/dashboard" component={Dashboard} />}
         <Route path="/units" component={Units} />
         <Route path="/active-rentals" component={ActiveRentals} />
         <Route path="/products" component={Products} />
-        {!isKaryawan && <Route path="/transactions" component={Transactions} />}
-        {!isKaryawan && <Route path="/expenses" component={Expenses} />}
-        {!isKaryawan && <Route path="/packages" component={Packages} />}
-        {!isKaryawan && <Route path="/laporan" component={Laporan} />}
-        {(user.role === "admin" || user.role === "owner") && <Route path="/users" component={UsersPage} />}
-        {isKaryawan && <Route path="/dashboard"><Redirect to="/" /></Route>}
-        {isKaryawan && <Route path="/transactions"><Redirect to="/" /></Route>}
-        {isKaryawan && <Route path="/expenses"><Redirect to="/" /></Route>}
-        {isKaryawan && <Route path="/laporan"><Redirect to="/" /></Route>}
-        {isKaryawan && <Route path="/users"><Redirect to="/" /></Route>}
+        {isAdmin && <Route path="/transactions" component={Transactions} />}
+        {isAdmin && <Route path="/expenses" component={Expenses} />}
+        {isAdmin && <Route path="/packages" component={Packages} />}
+        {isAdmin && <Route path="/laporan" component={Laporan} />}
+        {isAdmin && <Route path="/users" component={UsersPage} />}
+        {!isAdmin && <Route path="/dashboard"><Redirect to="/" /></Route>}
+        {!isAdmin && <Route path="/transactions"><Redirect to="/" /></Route>}
+        {!isAdmin && <Route path="/expenses"><Redirect to="/" /></Route>}
+        {!isAdmin && <Route path="/laporan"><Redirect to="/" /></Route>}
+        {!isAdmin && <Route path="/users"><Redirect to="/" /></Route>}
         <Route component={NotFound} />
       </Switch>
     </Layout>

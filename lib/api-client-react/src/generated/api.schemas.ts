@@ -362,6 +362,7 @@ export interface Transaction {
   type: TransactionType;
   description: string;
   amount: number;
+  costAmount: number;
   paymentMethod: TransactionPaymentMethod;
   rentalId?: number | null;
   productId?: number | null;
@@ -444,6 +445,20 @@ export interface UpdateSettingsBody {
   tagline?: string;
 }
 
+export interface TopProduct {
+  productId: number;
+  productName: string;
+  totalQty: number;
+  totalRevenue: number;
+}
+
+export interface TopUnit {
+  unitId: number;
+  unitName: string;
+  totalSessions: number;
+  totalRevenue: number;
+}
+
 export interface DailyIncome {
   date: string;
   income: number;
@@ -463,6 +478,8 @@ export interface DashboardStats {
   totalProducts: number;
   todayTransactions: number;
   weeklyIncome: DailyIncome[];
+  topProducts: TopProduct[];
+  topUnits: TopUnit[];
 }
 
 export interface ReportSummary {
@@ -543,6 +560,10 @@ export const ListTransactionsType = {
   rental: "rental",
   product: "product",
 } as const;
+
+export type DeleteTransaction200 = {
+  success: boolean;
+};
 
 export type ListRecentTransactionsParams = {
   limit?: number;

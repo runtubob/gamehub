@@ -31,6 +31,7 @@ import type {
   CreateUserBody,
   DashboardStats,
   DeleteResult,
+  DeleteTransaction200,
   Expense,
   ExtendRentalBody,
   FinancialReport,
@@ -3086,6 +3087,84 @@ export const useCreateTransactionBatch = <
   TContext
 > => {
   return useMutation(getCreateTransactionBatchMutationOptions(options));
+};
+
+export const getDeleteTransactionUrl = (id: number) => {
+  return `/api/transactions/${id}`;
+};
+
+export const deleteTransaction = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteTransaction200> => {
+  return customFetch<DeleteTransaction200>(getDeleteTransactionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteTransactionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTransaction>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteTransaction>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteTransaction"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteTransaction>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteTransaction(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteTransactionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteTransaction>>
+>;
+
+export type DeleteTransactionMutationError = ErrorType<unknown>;
+
+export const useDeleteTransaction = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTransaction>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteTransaction>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteTransactionMutationOptions(options));
 };
 
 export const getListRecentTransactionsUrl = (

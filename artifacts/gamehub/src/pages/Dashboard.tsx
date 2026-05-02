@@ -1,15 +1,14 @@
 import { useGetDashboard, useListRecentTransactions } from "@workspace/api-client-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { BarChart3, Gamepad2, Package, Receipt, Monitor, Zap, TrendingUp, TrendingDown, Banknote, CreditCard } from "lucide-react";
+import {
+  BarChart3, Gamepad2, Package, Receipt, Monitor, Zap, TrendingUp, TrendingDown,
+  Banknote, CreditCard, Trophy, Star
+} from "lucide-react";
 
-function formatRp(amount: number) {
-  return "Rp " + amount.toLocaleString("id-ID");
-}
-
+function formatRp(amount: number) { return "Rp " + amount.toLocaleString("id-ID"); }
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" });
 }
-
 function formatTime(dateStr: string | Date) {
   return new Date(dateStr).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
@@ -22,22 +21,20 @@ export default function Dashboard() {
   const netQris = (stats?.qrisIncome ?? 0) - (stats?.qrisExpenses ?? 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Ringkasan operasional hari ini</p>
       </div>
 
-      {/* Row 1: income stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard icon={<BarChart3 size={18} className="text-chart-1" />} label="Pendapatan Hari Ini" value={statsLoading ? "..." : formatRp(stats?.todayIncome ?? 0)} accent="text-chart-1" />
         <StatCard icon={<TrendingUp size={18} className="text-emerald-400" />} label="Profit Hari Ini" value={statsLoading ? "..." : formatRp(stats?.todayProfit ?? 0)} accent="text-emerald-400" />
         <StatCard icon={<TrendingDown size={18} className="text-destructive" />} label="Pengeluaran" value={statsLoading ? "..." : formatRp(stats?.todayExpenses ?? 0)} accent="text-destructive" />
         <StatCard icon={<Receipt size={18} className="text-chart-4" />} label="Transaksi" value={statsLoading ? "..." : String(stats?.todayTransactions ?? 0)} accent="text-chart-4" />
       </div>
 
-      {/* Row 2: kas breakdown */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card border border-card-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2"><Banknote size={16} className="text-chart-3" /><span className="text-xs text-muted-foreground">Kas Cash</span></div>
           <p className={`text-xl font-bold ${netCash >= 0 ? "text-chart-3" : "text-destructive"}`}>{statsLoading ? "..." : formatRp(netCash)}</p>
@@ -52,8 +49,7 @@ export default function Dashboard() {
         <StatCard icon={<Monitor size={18} className="text-chart-3" />} label="Unit Tersedia" value={statsLoading ? "..." : `${stats?.availableUnits ?? 0} / ${stats?.totalUnits ?? 0}`} accent="text-chart-3" />
       </div>
 
-      {/* Chart + Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-card border border-card-border rounded-xl p-5">
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">Pendapatan 7 Hari Terakhir</h2>
           {statsLoading ? (
@@ -66,9 +62,7 @@ export default function Dashboard() {
                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))", fontSize: 12 }}
-                  formatter={(v: number) => [formatRp(v), "Pendapatan"]}
-                  labelFormatter={(l) => formatDate(l as string)}
-                />
+                  formatter={(v: number) => [formatRp(v), "Pendapatan"]} labelFormatter={(l) => formatDate(l as string)} />
                 <Bar dataKey="income" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -85,6 +79,76 @@ export default function Dashboard() {
             <InfoRow icon={<Banknote size={14} />} label="Total Cash" value={statsLoading ? "..." : formatRp(stats?.cashIncome ?? 0)} valueClass="text-chart-3" />
             <InfoRow icon={<CreditCard size={14} />} label="Total QRIS" value={statsLoading ? "..." : formatRp(stats?.qrisIncome ?? 0)} valueClass="text-primary" />
           </div>
+        </div>
+      </div>
+
+      {/* Top Sellers — Produk Terlaku & Unit Terfavorit */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Top Products */}
+        <div className="bg-card border border-card-border rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy size={16} className="text-yellow-400" />
+            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Produk Terlaku</h2>
+            <span className="text-xs text-muted-foreground ml-auto">untuk restok</span>
+          </div>
+          {statsLoading ? (
+            <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-muted animate-pulse rounded-lg" />)}</div>
+          ) : !stats?.topProducts?.length ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Belum ada data penjualan produk</p>
+          ) : (
+            <div className="space-y-2">
+              {stats.topProducts.map((p, i) => (
+                <div key={p.productId} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0 ? "bg-yellow-500/20 text-yellow-400" : i === 1 ? "bg-gray-400/20 text-gray-400" : i === 2 ? "bg-orange-500/20 text-orange-400" : "bg-muted text-muted-foreground"}`}>
+                    {i + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{p.productName}</p>
+                    <p className="text-xs text-muted-foreground">{formatRp(p.totalRevenue)} pendapatan</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-chart-3">{p.totalQty}</p>
+                    <p className="text-xs text-muted-foreground">terjual</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top PS Units */}
+        <div className="bg-card border border-card-border rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Star size={16} className="text-primary" />
+            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Unit PS Terfavorit</h2>
+            <span className="text-xs text-muted-foreground ml-auto">berdasarkan sesi</span>
+          </div>
+          {statsLoading ? (
+            <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-muted animate-pulse rounded-lg" />)}</div>
+          ) : !stats?.topUnits?.length ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Belum ada data rental</p>
+          ) : (
+            <div className="space-y-2">
+              {stats.topUnits.map((u, i) => (
+                <div key={u.unitId} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0 ? "bg-yellow-500/20 text-yellow-400" : i === 1 ? "bg-gray-400/20 text-gray-400" : i === 2 ? "bg-orange-500/20 text-orange-400" : "bg-muted text-muted-foreground"}`}>
+                    {i + 1}
+                  </div>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Gamepad2 size={13} className="text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{u.unitName}</p>
+                      <p className="text-xs text-muted-foreground">{formatRp(u.totalRevenue)} pendapatan</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-primary">{u.totalSessions}</p>
+                    <p className="text-xs text-muted-foreground">sesi</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -127,7 +191,7 @@ function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label
   return (
     <div className="bg-card border border-card-border rounded-xl p-4">
       <div className="flex items-center gap-2 mb-2">{icon}<span className="text-xs text-muted-foreground">{label}</span></div>
-      <p className={`text-2xl font-bold ${accent}`}>{value}</p>
+      <p className={`text-xl md:text-2xl font-bold ${accent}`}>{value}</p>
     </div>
   );
 }

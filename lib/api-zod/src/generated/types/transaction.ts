@@ -13,6 +13,7 @@ export interface Transaction {
   type: TransactionType;
   description: string;
   amount: number;
+  costAmount: number;
   paymentMethod: TransactionPaymentMethod;
   rentalId?: number | null;
   productId?: number | null;

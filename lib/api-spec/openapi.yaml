@@ -719,6 +719,28 @@ paths:
                 items:
                   $ref: "#/components/schemas/Transaction"
 
+  /transactions/{id}:
+    delete:
+      operationId: deleteTransaction
+      tags: [transactions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transaction deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+
   /transactions/recent:
     get:
       operationId: listRecentTransactions
@@ -1340,6 +1362,8 @@ components:
           type: string
         amount:
           type: integer
+        costAmount:
+          type: integer
         paymentMethod:
           type: string
           enum: [cash, qris]
@@ -1355,7 +1379,7 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, type, description, amount, paymentMethod, createdAt]
+      required: [id, type, description, amount, costAmount, paymentMethod, createdAt]
 
     CreateTransactionBody:
       type: object
@@ -1440,6 +1464,32 @@ components:
         tagline:
           type: string
 
+    TopProduct:
+      type: object
+      properties:
+        productId:
+          type: integer
+        productName:
+          type: string
+        totalQty:
+          type: integer
+        totalRevenue:
+          type: integer
+      required: [productId, productName, totalQty, totalRevenue]
+
+    TopUnit:
+      type: object
+      properties:
+        unitId:
+          type: integer
+        unitName:
+          type: string
+        totalSessions:
+          type: integer
+        totalRevenue:
+          type: integer
+      required: [unitId, unitName, totalSessions, totalRevenue]
+
     DashboardStats:
       type: object
       properties:
@@ -1471,6 +1521,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DailyIncome"
+        topProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopProduct"
+        topUnits:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopUnit"
       required:
         - todayIncome
         - todayProfit
@@ -1485,6 +1543,8 @@ components:
         - totalProducts
         - todayTransactions
         - weeklyIncome
+        - topProducts
+        - topUnits
 
     DailyIncome:
       type: object

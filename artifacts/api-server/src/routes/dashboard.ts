@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, transactionsTable, rentalsTable, unitsTable, productsTable, expensesTable } from "@workspace/db";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -45,25 +45,24 @@ router.get("/dashboard", async (req, res) => {
 
   const allUnits = await db.select().from(unitsTable);
   const availableUnits = allUnits.filter((u) => u.status === "available").length;
-
   const [productCount] = await db.select({ count: sql<number>`count(*)` }).from(productsTable);
 
-  // Rental profit (100% profit)
-  const [rentalIncomeResult] = await db
+  // Rental profit: 100% (no cost stored for rentals)
+  const [rentalProfitResult] = await db
     .select({ total: sql<number>`coalesce(sum(${transactionsTable.amount}), 0)` })
     .from(transactionsTable).where(and(todayRange, eq(transactionsTable.type, "rental")));
 
-  // Product profit = amount - costPrice * quantity
+  // Product profit: use stored costAmount (fixes bungkus rokok profit issue)
   const [productProfitResult] = await db
     .select({
-      profit: sql<number>`coalesce(sum(${transactionsTable.amount} - ${productsTable.costPrice} * ${transactionsTable.quantity}), 0)`,
+      profit: sql<number>`coalesce(sum(${transactionsTable.amount} - ${transactionsTable.costAmount}), 0)`,
     })
     .from(transactionsTable)
-    .leftJoin(productsTable, eq(transactionsTable.productId, productsTable.id))
     .where(and(todayRange, eq(transactionsTable.type, "product")));
 
-  const todayProfit = Number(rentalIncomeResult?.total ?? 0) + Number(productProfitResult?.profit ?? 0);
+  const todayProfit = Number(rentalProfitResult?.total ?? 0) + Number(productProfitResult?.profit ?? 0);
 
+  // Weekly income (7 days)
   const weeklyIncome = [];
   for (let i = 6; i >= 0; i--) {
     const day = new Date(now); day.setDate(day.getDate() - i);
@@ -75,6 +74,50 @@ router.get("/dashboard", async (req, res) => {
       .where(and(gte(transactionsTable.createdAt, startOfDay), lte(transactionsTable.createdAt, endOfDay)));
     weeklyIncome.push({ date: day.toISOString().split("T")[0], income: Number(result?.total ?? 0) });
   }
+
+  // Top selling products (all time, by qty sold)
+  const rawTopProducts = await db
+    .select({
+      productId: transactionsTable.productId,
+      totalQty: sql<number>`coalesce(sum(${transactionsTable.quantity}), 0)`,
+      totalRevenue: sql<number>`coalesce(sum(${transactionsTable.amount}), 0)`,
+    })
+    .from(transactionsTable)
+    .where(and(eq(transactionsTable.type, "product"), sql`${transactionsTable.productId} is not null`))
+    .groupBy(transactionsTable.productId)
+    .orderBy(desc(sql`coalesce(sum(${transactionsTable.quantity}), 0)`))
+    .limit(5);
+
+  const allProds = await db.select({ id: productsTable.id, name: productsTable.name }).from(productsTable);
+  const prodNameMap: Record<number, string> = {};
+  for (const p of allProds) prodNameMap[p.id] = p.name;
+
+  const topProducts = rawTopProducts.map(p => ({
+    productId: p.productId ?? 0,
+    productName: prodNameMap[p.productId ?? 0] ?? "Produk",
+    totalQty: Number(p.totalQty),
+    totalRevenue: Number(p.totalRevenue),
+  }));
+
+  // Top PS units (all time, by sessions)
+  const rawTopUnits = await db
+    .select({
+      unitId: rentalsTable.unitId,
+      unitName: rentalsTable.unitName,
+      totalSessions: sql<number>`count(*)`,
+      totalRevenue: sql<number>`coalesce(sum(${rentalsTable.totalCost}), 0)`,
+    })
+    .from(rentalsTable)
+    .groupBy(rentalsTable.unitId, rentalsTable.unitName)
+    .orderBy(desc(sql`count(*)`))
+    .limit(5);
+
+  const topUnits = rawTopUnits.map(u => ({
+    unitId: u.unitId,
+    unitName: u.unitName,
+    totalSessions: Number(u.totalSessions),
+    totalRevenue: Number(u.totalRevenue),
+  }));
 
   res.json({
     todayIncome: Number(todayIncomeResult?.total ?? 0),
@@ -90,6 +133,8 @@ router.get("/dashboard", async (req, res) => {
     totalProducts: Number(productCount?.count ?? 0),
     todayTransactions: Number(todayTxCount?.count ?? 0),
     weeklyIncome,
+    topProducts,
+    topUnits,
   });
 });
 

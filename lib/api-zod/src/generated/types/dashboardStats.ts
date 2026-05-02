@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DailyIncome } from "./dailyIncome";
+import type { TopProduct } from "./topProduct";
+import type { TopUnit } from "./topUnit";
 
 export interface DashboardStats {
   todayIncome: number;
@@ -21,4 +23,6 @@ export interface DashboardStats {
   totalProducts: number;
   todayTransactions: number;
   weeklyIncome: DailyIncome[];
+  topProducts: TopProduct[];
+  topUnits: TopUnit[];
 }

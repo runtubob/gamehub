@@ -5,7 +5,7 @@ export interface AuthUser {
   id: number;
   username: string;
   name: string;
-  role: "admin" | "owner" | "karyawan";
+  role: "superadmin" | "admin" | "owner" | "karyawan";
   active: boolean;
 }
 
@@ -51,7 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Login gagal");
-
     const { token: newToken, user: newUser } = data as { token: string; user: AuthUser };
     setToken(newToken);
     setUser(newUser);
@@ -81,9 +80,22 @@ export function useAuth() {
   return ctx;
 }
 
+/** Super Admin = semua akses termasuk hapus/sensitif. Admin = operasional harian. */
+export function isSuperAdmin(role: string | undefined) {
+  return role === "superadmin" || role === "admin" || role === "owner";
+}
+
+export function isAdminOrAbove(role: string | undefined) {
+  return role === "superadmin" || role === "admin" || role === "owner";
+}
+
+export function canDelete(role: string | undefined) {
+  return role === "superadmin";
+}
+
 export function canAccess(role: string | undefined, feature: "finance" | "settings" | "expenses" | "transactions" | "packages" | "users" | "stock") {
   if (!role) return false;
-  if (role === "admin" || role === "owner") return true;
+  if (role === "superadmin" || role === "admin" || role === "owner") return true;
   if (role === "karyawan" && (feature === "expenses" || feature === "stock")) return true;
   return false;
 }
