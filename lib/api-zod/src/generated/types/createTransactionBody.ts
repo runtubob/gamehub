@@ -5,8 +5,10 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateTransactionBodyPaymentMethod } from "./createTransactionBodyPaymentMethod";
 
 export interface CreateTransactionBody {
   productId: number;
   quantity?: number;
+  paymentMethod: CreateTransactionBodyPaymentMethod;
 }

@@ -5,9 +5,11 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
-import type { ListRentalsStatus } from "./listRentalsStatus";
 
-export type ListRentalsParams = {
-  status?: ListRentalsStatus;
-  date?: string;
-};
+export interface UpdateRentalPackageBody {
+  label?: string;
+  durationMinutes?: number;
+  price?: number;
+  costPrice?: number;
+  sortOrder?: number;
+}

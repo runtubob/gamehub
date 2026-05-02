@@ -8,10 +8,13 @@
 import type { DailyIncome } from "./dailyIncome";
 
 export interface DashboardStats {
-  /** Total income today in IDR */
   todayIncome: number;
-  /** Total profit today in IDR (income minus cost) */
   todayProfit: number;
+  cashIncome: number;
+  qrisIncome: number;
+  todayExpenses: number;
+  cashExpenses: number;
+  qrisExpenses: number;
   activeRentals: number;
   availableUnits: number;
   totalUnits: number;

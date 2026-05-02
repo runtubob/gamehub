@@ -11,9 +11,9 @@ export interface ActiveRental {
   unitId: number;
   unitName: string;
   customerName: string;
+  packageLabel: string;
   startTime: Date;
-  elapsedMinutes: number;
-  /** Estimated cost so far in IDR */
-  estimatedCost: number;
-  hourlyRate: number;
+  endTime: Date;
+  remainingSeconds: number;
+  totalCost: number;
 }

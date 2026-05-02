@@ -11,7 +11,6 @@ export interface Unit {
   id: number;
   name: string;
   status: UnitStatus;
-  /** Rate in IDR per hour */
   hourlyRate: number;
   createdAt: Date;
 }

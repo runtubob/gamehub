@@ -12,10 +12,11 @@ export interface Rental {
   unitId: number;
   unitName: string;
   customerName: string;
+  packageId?: number | null;
+  packageLabel?: string | null;
   startTime: Date;
   endTime?: Date | null;
   durationMinutes?: number | null;
-  /** Total cost in IDR */
   totalCost?: number | null;
   status: RentalStatus;
   createdAt: Date;

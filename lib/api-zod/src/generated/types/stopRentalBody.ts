@@ -5,12 +5,8 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
+import type { StopRentalBodyPaymentMethod } from "./stopRentalBodyPaymentMethod";
 
-export interface Product {
-  id: number;
-  name: string;
-  price: number;
-  costPrice: number;
-  stock: number;
-  createdAt: Date;
+export interface StopRentalBody {
+  paymentMethod: StopRentalBodyPaymentMethod;
 }

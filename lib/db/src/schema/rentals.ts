@@ -7,6 +7,8 @@ export const rentalsTable = pgTable("rentals", {
   unitId: integer("unit_id").notNull(),
   unitName: text("unit_name").notNull(),
   customerName: text("customer_name").notNull(),
+  packageId: integer("package_id"),
+  packageLabel: text("package_label"),
   startTime: timestamp("start_time").defaultNow().notNull(),
   endTime: timestamp("end_time"),
   durationMinutes: integer("duration_minutes"),

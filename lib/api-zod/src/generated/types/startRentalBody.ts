@@ -9,4 +9,5 @@
 export interface StartRentalBody {
   unitId: number;
   customerName: string;
+  packageId: number;
 }

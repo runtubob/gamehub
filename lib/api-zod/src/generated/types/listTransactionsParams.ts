@@ -8,9 +8,6 @@
 import type { ListTransactionsType } from "./listTransactionsType";
 
 export type ListTransactionsParams = {
-  /**
-   * Filter by date (YYYY-MM-DD)
-   */
   date?: string;
   type?: ListTransactionsType;
 };

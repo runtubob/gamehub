@@ -8,14 +8,13 @@ import Units from "@/pages/Units";
 import ActiveRentals from "@/pages/ActiveRentals";
 import Products from "@/pages/Products";
 import Transactions from "@/pages/Transactions";
+import Expenses from "@/pages/Expenses";
+import Packages from "@/pages/Packages";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: {
-      staleTime: 10_000,
-      retry: 1,
-    },
+    queries: { staleTime: 10_000, retry: 1 },
   },
 });
 
@@ -28,6 +27,8 @@ function Router() {
         <Route path="/active-rentals" component={ActiveRentals} />
         <Route path="/products" component={Products} />
         <Route path="/transactions" component={Transactions} />
+        <Route path="/expenses" component={Expenses} />
+        <Route path="/packages" component={Packages} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

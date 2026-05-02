@@ -5,14 +5,17 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
+import type { TransactionPaymentMethod } from "./transactionPaymentMethod";
 import type { TransactionType } from "./transactionType";
 
 export interface Transaction {
   id: number;
   type: TransactionType;
   description: string;
-  /** Amount in IDR */
   amount: number;
+  paymentMethod: TransactionPaymentMethod;
   rentalId?: number | null;
+  productId?: number | null;
+  quantity?: number | null;
   createdAt: Date;
 }

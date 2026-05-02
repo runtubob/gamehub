@@ -6,11 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Product {
+export interface RentalPackage {
   id: number;
-  name: string;
+  label: string;
+  durationMinutes: number;
   price: number;
   costPrice: number;
-  stock: number;
+  sortOrder: number;
   createdAt: Date;
 }

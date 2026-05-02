@@ -1,6 +1,5 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
   description: API specification for GameHub PS Rental Management
@@ -9,17 +8,14 @@ servers:
     description: Base API path
 tags:
   - name: health
-    description: Health operations
   - name: units
-    description: PlayStation unit management
   - name: products
-    description: Product management
   - name: rentals
-    description: Rental session management
   - name: transactions
-    description: Transaction (product sales) management
   - name: dashboard
-    description: Dashboard summary endpoints
+  - name: rentalPackages
+  - name: expenses
+  - name: settings
 
 paths:
   /healthz:
@@ -27,7 +23,6 @@ paths:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -72,7 +67,6 @@ paths:
     get:
       operationId: getUnit
       tags: [units]
-      summary: Get a specific unit
       parameters:
         - name: id
           in: path
@@ -89,7 +83,6 @@ paths:
     put:
       operationId: updateUnit
       tags: [units]
-      summary: Update a PlayStation unit
       parameters:
         - name: id
           in: path
@@ -112,7 +105,6 @@ paths:
     delete:
       operationId: deleteUnit
       tags: [units]
-      summary: Delete a PlayStation unit
       parameters:
         - name: id
           in: path
@@ -131,7 +123,6 @@ paths:
     get:
       operationId: listProducts
       tags: [products]
-      summary: List all products
       responses:
         "200":
           description: List of products
@@ -144,7 +135,6 @@ paths:
     post:
       operationId: createProduct
       tags: [products]
-      summary: Add a new product
       requestBody:
         required: true
         content:
@@ -163,7 +153,6 @@ paths:
     get:
       operationId: getProduct
       tags: [products]
-      summary: Get a specific product
       parameters:
         - name: id
           in: path
@@ -180,7 +169,6 @@ paths:
     put:
       operationId: updateProduct
       tags: [products]
-      summary: Update a product
       parameters:
         - name: id
           in: path
@@ -203,7 +191,6 @@ paths:
     delete:
       operationId: deleteProduct
       tags: [products]
-      summary: Delete a product
       parameters:
         - name: id
           in: path
@@ -218,11 +205,81 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResult"
 
+  /rental-packages:
+    get:
+      operationId: listRentalPackages
+      tags: [rentalPackages]
+      summary: List all rental packages
+      responses:
+        "200":
+          description: List of rental packages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RentalPackage"
+    post:
+      operationId: createRentalPackage
+      tags: [rentalPackages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRentalPackageBody"
+      responses:
+        "201":
+          description: Package created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RentalPackage"
+
+  /rental-packages/{id}:
+    put:
+      operationId: updateRentalPackage
+      tags: [rentalPackages]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRentalPackageBody"
+      responses:
+        "200":
+          description: Package updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RentalPackage"
+    delete:
+      operationId: deleteRentalPackage
+      tags: [rentalPackages]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Package deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
   /rentals:
     get:
       operationId: listRentals
       tags: [rentals]
-      summary: List all rentals
       parameters:
         - name: status
           in: query
@@ -233,7 +290,6 @@ paths:
           in: query
           schema:
             type: string
-            description: Filter by date (YYYY-MM-DD)
       responses:
         "200":
           description: List of rentals
@@ -246,7 +302,6 @@ paths:
     post:
       operationId: startRental
       tags: [rentals]
-      summary: Start a rental session
       requestBody:
         required: true
         content:
@@ -265,10 +320,9 @@ paths:
     get:
       operationId: listActiveRentals
       tags: [rentals]
-      summary: List currently active rentals with elapsed time
       responses:
         "200":
-          description: Active rentals with elapsed time
+          description: Active rentals with countdown
           content:
             application/json:
               schema:
@@ -280,13 +334,18 @@ paths:
     post:
       operationId: stopRental
       tags: [rentals]
-      summary: Stop an active rental session
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StopRentalBody"
       responses:
         "200":
           description: Rental stopped
@@ -299,13 +358,11 @@ paths:
     get:
       operationId: listTransactions
       tags: [transactions]
-      summary: List all transactions
       parameters:
         - name: date
           in: query
           schema:
             type: string
-            description: Filter by date (YYYY-MM-DD)
         - name: type
           in: query
           schema:
@@ -323,7 +380,6 @@ paths:
     post:
       operationId: createTransaction
       tags: [transactions]
-      summary: Record a product sale transaction
       requestBody:
         required: true
         content:
@@ -338,11 +394,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/Transaction"
 
+  /transactions/batch:
+    post:
+      operationId: createTransactionBatch
+      tags: [transactions]
+      summary: Record multiple product sale transactions at once (cart checkout)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionBatchBody"
+      responses:
+        "201":
+          description: Transactions recorded
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+
   /transactions/recent:
     get:
       operationId: listRecentTransactions
       tags: [transactions]
-      summary: Get recent transactions
       parameters:
         - name: limit
           in: query
@@ -359,11 +435,92 @@ paths:
                 items:
                   $ref: "#/components/schemas/Transaction"
 
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExpenseBody"
+      responses:
+        "201":
+          description: Expense created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  /expenses/{id}:
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get shop settings
+      responses:
+        "200":
+          description: Shop settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopSettings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopSettings"
+
   /dashboard:
     get:
       operationId: getDashboard
       tags: [dashboard]
-      summary: Get dashboard summary statistics
       responses:
         "200":
           description: Dashboard stats
@@ -379,8 +536,7 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     Unit:
       type: object
@@ -394,16 +550,10 @@ components:
           enum: [available, occupied]
         hourlyRate:
           type: integer
-          description: Rate in IDR per hour
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - name
-        - status
-        - hourlyRate
-        - createdAt
+      required: [id, name, status, hourlyRate, createdAt]
 
     CreateUnitBody:
       type: object
@@ -412,9 +562,7 @@ components:
           type: string
         hourlyRate:
           type: integer
-      required:
-        - name
-        - hourlyRate
+      required: [name, hourlyRate]
 
     UpdateUnitBody:
       type: object
@@ -436,22 +584,14 @@ components:
           type: string
         price:
           type: integer
-          description: Selling price in IDR
         costPrice:
           type: integer
-          description: Cost/modal price in IDR
         stock:
           type: integer
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - name
-        - price
-        - costPrice
-        - stock
-        - createdAt
+      required: [id, name, price, costPrice, stock, createdAt]
 
     CreateProductBody:
       type: object
@@ -464,10 +604,7 @@ components:
           type: integer
         stock:
           type: integer
-      required:
-        - name
-        - price
-        - stock
+      required: [name, price, stock]
 
     UpdateProductBody:
       type: object
@@ -481,6 +618,55 @@ components:
         stock:
           type: integer
 
+    RentalPackage:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        durationMinutes:
+          type: integer
+        price:
+          type: integer
+        costPrice:
+          type: integer
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, label, durationMinutes, price, costPrice, sortOrder, createdAt]
+
+    CreateRentalPackageBody:
+      type: object
+      properties:
+        label:
+          type: string
+        durationMinutes:
+          type: integer
+        price:
+          type: integer
+        costPrice:
+          type: integer
+        sortOrder:
+          type: integer
+      required: [label, durationMinutes, price]
+
+    UpdateRentalPackageBody:
+      type: object
+      properties:
+        label:
+          type: string
+        durationMinutes:
+          type: integer
+        price:
+          type: integer
+        costPrice:
+          type: integer
+        sortOrder:
+          type: integer
+
     Rental:
       type: object
       properties:
@@ -492,6 +678,12 @@ components:
           type: string
         customerName:
           type: string
+        packageId:
+          type: integer
+          nullable: true
+        packageLabel:
+          type: string
+          nullable: true
         startTime:
           type: string
           format: date-time
@@ -505,21 +697,13 @@ components:
         totalCost:
           type: integer
           nullable: true
-          description: Total cost in IDR
         status:
           type: string
           enum: [active, completed]
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - unitId
-        - unitName
-        - customerName
-        - startTime
-        - status
-        - createdAt
+      required: [id, unitId, unitName, customerName, startTime, status, createdAt]
 
     ActiveRental:
       type: object
@@ -532,25 +716,19 @@ components:
           type: string
         customerName:
           type: string
+        packageLabel:
+          type: string
         startTime:
           type: string
           format: date-time
-        elapsedMinutes:
+        endTime:
+          type: string
+          format: date-time
+        remainingSeconds:
           type: integer
-        estimatedCost:
+        totalCost:
           type: integer
-          description: Estimated cost so far in IDR
-        hourlyRate:
-          type: integer
-      required:
-        - id
-        - unitId
-        - unitName
-        - customerName
-        - startTime
-        - elapsedMinutes
-        - estimatedCost
-        - hourlyRate
+      required: [id, unitId, unitName, customerName, packageLabel, startTime, endTime, remainingSeconds, totalCost]
 
     StartRentalBody:
       type: object
@@ -559,9 +737,17 @@ components:
           type: integer
         customerName:
           type: string
-      required:
-        - unitId
-        - customerName
+        packageId:
+          type: integer
+      required: [unitId, customerName, packageId]
+
+    StopRentalBody:
+      type: object
+      properties:
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+      required: [paymentMethod]
 
     Transaction:
       type: object
@@ -575,19 +761,22 @@ components:
           type: string
         amount:
           type: integer
-          description: Amount in IDR
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
         rentalId:
+          type: integer
+          nullable: true
+        productId:
+          type: integer
+          nullable: true
+        quantity:
           type: integer
           nullable: true
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - type
-        - description
-        - amount
-        - createdAt
+      required: [id, type, description, amount, paymentMethod, createdAt]
 
     CreateTransactionBody:
       type: object
@@ -597,18 +786,94 @@ components:
         quantity:
           type: integer
           default: 1
-      required:
-        - productId
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+      required: [productId, paymentMethod]
+
+    CreateTransactionBatchBody:
+      type: object
+      properties:
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: integer
+              quantity:
+                type: integer
+            required: [productId, quantity]
+      required: [paymentMethod, items]
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+        description:
+          type: string
+        amount:
+          type: integer
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, description, amount, paymentMethod, createdAt]
+
+    CreateExpenseBody:
+      type: object
+      properties:
+        description:
+          type: string
+        amount:
+          type: integer
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+      required: [description, amount, paymentMethod]
+
+    ShopSettings:
+      type: object
+      properties:
+        id:
+          type: integer
+        shopName:
+          type: string
+        tagline:
+          type: string
+      required: [id, shopName, tagline]
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        shopName:
+          type: string
+        tagline:
+          type: string
 
     DashboardStats:
       type: object
       properties:
         todayIncome:
           type: integer
-          description: Total income today in IDR
         todayProfit:
           type: integer
-          description: Total profit today in IDR (income minus cost)
+        cashIncome:
+          type: integer
+        qrisIncome:
+          type: integer
+        todayExpenses:
+          type: integer
+        cashExpenses:
+          type: integer
+        qrisExpenses:
+          type: integer
         activeRentals:
           type: integer
         availableUnits:
@@ -626,6 +891,11 @@ components:
       required:
         - todayIncome
         - todayProfit
+        - cashIncome
+        - qrisIncome
+        - todayExpenses
+        - cashExpenses
+        - qrisExpenses
         - activeRentals
         - availableUnits
         - totalUnits
@@ -640,9 +910,7 @@ components:
           type: string
         income:
           type: integer
-      required:
-        - date
-        - income
+      required: [date, income]
 
     DeleteResult:
       type: object
@@ -651,6 +919,4 @@ components:
           type: boolean
         message:
           type: string
-      required:
-        - success
-        - message
+      required: [success, message]

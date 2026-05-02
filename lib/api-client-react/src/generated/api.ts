@@ -18,21 +18,31 @@ import type {
 
 import type {
   ActiveRental,
+  CreateExpenseBody,
   CreateProductBody,
+  CreateRentalPackageBody,
+  CreateTransactionBatchBody,
   CreateTransactionBody,
   CreateUnitBody,
   DashboardStats,
   DeleteResult,
+  Expense,
   HealthStatus,
+  ListExpensesParams,
   ListRecentTransactionsParams,
   ListRentalsParams,
   ListTransactionsParams,
   Product,
   Rental,
+  RentalPackage,
+  ShopSettings,
   StartRentalBody,
+  StopRentalBody,
   Transaction,
   Unit,
   UpdateProductBody,
+  UpdateRentalPackageBody,
+  UpdateSettingsBody,
   UpdateUnitBody,
 } from "./api.schemas";
 
@@ -46,7 +56,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -272,9 +281,6 @@ export const useCreateUnit = <
   return useMutation(getCreateUnitMutationOptions(options));
 };
 
-/**
- * @summary Get a specific unit
- */
 export const getGetUnitUrl = (id: number) => {
   return `/api/units/${id}`;
 };
@@ -326,10 +332,6 @@ export type GetUnitQueryResult = NonNullable<
 >;
 export type GetUnitQueryError = ErrorType<unknown>;
 
-/**
- * @summary Get a specific unit
- */
-
 export function useGetUnit<
   TData = Awaited<ReturnType<typeof getUnit>>,
   TError = ErrorType<unknown>,
@@ -349,9 +351,6 @@ export function useGetUnit<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Update a PlayStation unit
- */
 export const getUpdateUnitUrl = (id: number) => {
   return `/api/units/${id}`;
 };
@@ -413,9 +412,6 @@ export type UpdateUnitMutationResult = NonNullable<
 export type UpdateUnitMutationBody = BodyType<UpdateUnitBody>;
 export type UpdateUnitMutationError = ErrorType<unknown>;
 
-/**
- * @summary Update a PlayStation unit
- */
 export const useUpdateUnit = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -436,9 +432,6 @@ export const useUpdateUnit = <
   return useMutation(getUpdateUnitMutationOptions(options));
 };
 
-/**
- * @summary Delete a PlayStation unit
- */
 export const getDeleteUnitUrl = (id: number) => {
   return `/api/units/${id}`;
 };
@@ -497,9 +490,6 @@ export type DeleteUnitMutationResult = NonNullable<
 
 export type DeleteUnitMutationError = ErrorType<unknown>;
 
-/**
- * @summary Delete a PlayStation unit
- */
 export const useDeleteUnit = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -520,9 +510,6 @@ export const useDeleteUnit = <
   return useMutation(getDeleteUnitMutationOptions(options));
 };
 
-/**
- * @summary List all products
- */
 export const getListProductsUrl = () => {
   return `/api/products`;
 };
@@ -571,10 +558,6 @@ export type ListProductsQueryResult = NonNullable<
 >;
 export type ListProductsQueryError = ErrorType<unknown>;
 
-/**
- * @summary List all products
- */
-
 export function useListProducts<
   TData = Awaited<ReturnType<typeof listProducts>>,
   TError = ErrorType<unknown>,
@@ -595,9 +578,6 @@ export function useListProducts<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Add a new product
- */
 export const getCreateProductUrl = () => {
   return `/api/products`;
 };
@@ -658,9 +638,6 @@ export type CreateProductMutationResult = NonNullable<
 export type CreateProductMutationBody = BodyType<CreateProductBody>;
 export type CreateProductMutationError = ErrorType<unknown>;
 
-/**
- * @summary Add a new product
- */
 export const useCreateProduct = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -681,9 +658,6 @@ export const useCreateProduct = <
   return useMutation(getCreateProductMutationOptions(options));
 };
 
-/**
- * @summary Get a specific product
- */
 export const getGetProductUrl = (id: number) => {
   return `/api/products/${id}`;
 };
@@ -741,10 +715,6 @@ export type GetProductQueryResult = NonNullable<
 >;
 export type GetProductQueryError = ErrorType<unknown>;
 
-/**
- * @summary Get a specific product
- */
-
 export function useGetProduct<
   TData = Awaited<ReturnType<typeof getProduct>>,
   TError = ErrorType<unknown>,
@@ -768,9 +738,6 @@ export function useGetProduct<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Update a product
- */
 export const getUpdateProductUrl = (id: number) => {
   return `/api/products/${id}`;
 };
@@ -832,9 +799,6 @@ export type UpdateProductMutationResult = NonNullable<
 export type UpdateProductMutationBody = BodyType<UpdateProductBody>;
 export type UpdateProductMutationError = ErrorType<unknown>;
 
-/**
- * @summary Update a product
- */
 export const useUpdateProduct = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -855,9 +819,6 @@ export const useUpdateProduct = <
   return useMutation(getUpdateProductMutationOptions(options));
 };
 
-/**
- * @summary Delete a product
- */
 export const getDeleteProductUrl = (id: number) => {
   return `/api/products/${id}`;
 };
@@ -916,9 +877,6 @@ export type DeleteProductMutationResult = NonNullable<
 
 export type DeleteProductMutationError = ErrorType<unknown>;
 
-/**
- * @summary Delete a product
- */
 export const useDeleteProduct = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -940,8 +898,319 @@ export const useDeleteProduct = <
 };
 
 /**
- * @summary List all rentals
+ * @summary List all rental packages
  */
+export const getListRentalPackagesUrl = () => {
+  return `/api/rental-packages`;
+};
+
+export const listRentalPackages = async (
+  options?: RequestInit,
+): Promise<RentalPackage[]> => {
+  return customFetch<RentalPackage[]>(getListRentalPackagesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListRentalPackagesQueryKey = () => {
+  return [`/api/rental-packages`] as const;
+};
+
+export const getListRentalPackagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRentalPackages>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRentalPackages>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListRentalPackagesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listRentalPackages>>
+  > = ({ signal }) => listRentalPackages({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRentalPackages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListRentalPackagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRentalPackages>>
+>;
+export type ListRentalPackagesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all rental packages
+ */
+
+export function useListRentalPackages<
+  TData = Awaited<ReturnType<typeof listRentalPackages>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRentalPackages>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRentalPackagesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateRentalPackageUrl = () => {
+  return `/api/rental-packages`;
+};
+
+export const createRentalPackage = async (
+  createRentalPackageBody: CreateRentalPackageBody,
+  options?: RequestInit,
+): Promise<RentalPackage> => {
+  return customFetch<RentalPackage>(getCreateRentalPackageUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createRentalPackageBody),
+  });
+};
+
+export const getCreateRentalPackageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRentalPackage>>,
+    TError,
+    { data: BodyType<CreateRentalPackageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createRentalPackage>>,
+  TError,
+  { data: BodyType<CreateRentalPackageBody> },
+  TContext
+> => {
+  const mutationKey = ["createRentalPackage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createRentalPackage>>,
+    { data: BodyType<CreateRentalPackageBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createRentalPackage(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateRentalPackageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createRentalPackage>>
+>;
+export type CreateRentalPackageMutationBody = BodyType<CreateRentalPackageBody>;
+export type CreateRentalPackageMutationError = ErrorType<unknown>;
+
+export const useCreateRentalPackage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRentalPackage>>,
+    TError,
+    { data: BodyType<CreateRentalPackageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createRentalPackage>>,
+  TError,
+  { data: BodyType<CreateRentalPackageBody> },
+  TContext
+> => {
+  return useMutation(getCreateRentalPackageMutationOptions(options));
+};
+
+export const getUpdateRentalPackageUrl = (id: number) => {
+  return `/api/rental-packages/${id}`;
+};
+
+export const updateRentalPackage = async (
+  id: number,
+  updateRentalPackageBody: UpdateRentalPackageBody,
+  options?: RequestInit,
+): Promise<RentalPackage> => {
+  return customFetch<RentalPackage>(getUpdateRentalPackageUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateRentalPackageBody),
+  });
+};
+
+export const getUpdateRentalPackageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRentalPackage>>,
+    TError,
+    { id: number; data: BodyType<UpdateRentalPackageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateRentalPackage>>,
+  TError,
+  { id: number; data: BodyType<UpdateRentalPackageBody> },
+  TContext
+> => {
+  const mutationKey = ["updateRentalPackage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateRentalPackage>>,
+    { id: number; data: BodyType<UpdateRentalPackageBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateRentalPackage(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateRentalPackageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateRentalPackage>>
+>;
+export type UpdateRentalPackageMutationBody = BodyType<UpdateRentalPackageBody>;
+export type UpdateRentalPackageMutationError = ErrorType<unknown>;
+
+export const useUpdateRentalPackage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRentalPackage>>,
+    TError,
+    { id: number; data: BodyType<UpdateRentalPackageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateRentalPackage>>,
+  TError,
+  { id: number; data: BodyType<UpdateRentalPackageBody> },
+  TContext
+> => {
+  return useMutation(getUpdateRentalPackageMutationOptions(options));
+};
+
+export const getDeleteRentalPackageUrl = (id: number) => {
+  return `/api/rental-packages/${id}`;
+};
+
+export const deleteRentalPackage = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteRentalPackageUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteRentalPackageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRentalPackage>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteRentalPackage>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteRentalPackage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteRentalPackage>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteRentalPackage(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteRentalPackageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteRentalPackage>>
+>;
+
+export type DeleteRentalPackageMutationError = ErrorType<unknown>;
+
+export const useDeleteRentalPackage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRentalPackage>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteRentalPackage>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteRentalPackageMutationOptions(options));
+};
+
 export const getListRentalsUrl = (params?: ListRentalsParams) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1006,10 +1275,6 @@ export type ListRentalsQueryResult = NonNullable<
 >;
 export type ListRentalsQueryError = ErrorType<unknown>;
 
-/**
- * @summary List all rentals
- */
-
 export function useListRentals<
   TData = Awaited<ReturnType<typeof listRentals>>,
   TError = ErrorType<unknown>,
@@ -1033,9 +1298,6 @@ export function useListRentals<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Start a rental session
- */
 export const getStartRentalUrl = () => {
   return `/api/rentals`;
 };
@@ -1096,9 +1358,6 @@ export type StartRentalMutationResult = NonNullable<
 export type StartRentalMutationBody = BodyType<StartRentalBody>;
 export type StartRentalMutationError = ErrorType<unknown>;
 
-/**
- * @summary Start a rental session
- */
 export const useStartRental = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -1119,9 +1378,6 @@ export const useStartRental = <
   return useMutation(getStartRentalMutationOptions(options));
 };
 
-/**
- * @summary List currently active rentals with elapsed time
- */
 export const getListActiveRentalsUrl = () => {
   return `/api/rentals/active`;
 };
@@ -1170,10 +1426,6 @@ export type ListActiveRentalsQueryResult = NonNullable<
 >;
 export type ListActiveRentalsQueryError = ErrorType<unknown>;
 
-/**
- * @summary List currently active rentals with elapsed time
- */
-
 export function useListActiveRentals<
   TData = Awaited<ReturnType<typeof listActiveRentals>>,
   TError = ErrorType<unknown>,
@@ -1194,20 +1446,20 @@ export function useListActiveRentals<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Stop an active rental session
- */
 export const getStopRentalUrl = (id: number) => {
   return `/api/rentals/${id}/stop`;
 };
 
 export const stopRental = async (
   id: number,
+  stopRentalBody: StopRentalBody,
   options?: RequestInit,
 ): Promise<Rental> => {
   return customFetch<Rental>(getStopRentalUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(stopRentalBody),
   });
 };
 
@@ -1218,14 +1470,14 @@ export const getStopRentalMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof stopRental>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<StopRentalBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof stopRental>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<StopRentalBody> },
   TContext
 > => {
   const mutationKey = ["stopRental"];
@@ -1239,11 +1491,11 @@ export const getStopRentalMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof stopRental>>,
-    { id: number }
+    { id: number; data: BodyType<StopRentalBody> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return stopRental(id, requestOptions);
+    return stopRental(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1252,12 +1504,9 @@ export const getStopRentalMutationOptions = <
 export type StopRentalMutationResult = NonNullable<
   Awaited<ReturnType<typeof stopRental>>
 >;
-
+export type StopRentalMutationBody = BodyType<StopRentalBody>;
 export type StopRentalMutationError = ErrorType<unknown>;
 
-/**
- * @summary Stop an active rental session
- */
 export const useStopRental = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -1265,22 +1514,19 @@ export const useStopRental = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof stopRental>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<StopRentalBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof stopRental>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<StopRentalBody> },
   TContext
 > => {
   return useMutation(getStopRentalMutationOptions(options));
 };
 
-/**
- * @summary List all transactions
- */
 export const getListTransactionsUrl = (params?: ListTransactionsParams) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1348,10 +1594,6 @@ export type ListTransactionsQueryResult = NonNullable<
 >;
 export type ListTransactionsQueryError = ErrorType<unknown>;
 
-/**
- * @summary List all transactions
- */
-
 export function useListTransactions<
   TData = Awaited<ReturnType<typeof listTransactions>>,
   TError = ErrorType<unknown>,
@@ -1375,9 +1617,6 @@ export function useListTransactions<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Record a product sale transaction
- */
 export const getCreateTransactionUrl = () => {
   return `/api/transactions`;
 };
@@ -1438,9 +1677,6 @@ export type CreateTransactionMutationResult = NonNullable<
 export type CreateTransactionMutationBody = BodyType<CreateTransactionBody>;
 export type CreateTransactionMutationError = ErrorType<unknown>;
 
-/**
- * @summary Record a product sale transaction
- */
 export const useCreateTransaction = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -1462,8 +1698,92 @@ export const useCreateTransaction = <
 };
 
 /**
- * @summary Get recent transactions
+ * @summary Record multiple product sale transactions at once (cart checkout)
  */
+export const getCreateTransactionBatchUrl = () => {
+  return `/api/transactions/batch`;
+};
+
+export const createTransactionBatch = async (
+  createTransactionBatchBody: CreateTransactionBatchBody,
+  options?: RequestInit,
+): Promise<Transaction[]> => {
+  return customFetch<Transaction[]>(getCreateTransactionBatchUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createTransactionBatchBody),
+  });
+};
+
+export const getCreateTransactionBatchMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTransactionBatch>>,
+    TError,
+    { data: BodyType<CreateTransactionBatchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createTransactionBatch>>,
+  TError,
+  { data: BodyType<CreateTransactionBatchBody> },
+  TContext
+> => {
+  const mutationKey = ["createTransactionBatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createTransactionBatch>>,
+    { data: BodyType<CreateTransactionBatchBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createTransactionBatch(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateTransactionBatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createTransactionBatch>>
+>;
+export type CreateTransactionBatchMutationBody =
+  BodyType<CreateTransactionBatchBody>;
+export type CreateTransactionBatchMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Record multiple product sale transactions at once (cart checkout)
+ */
+export const useCreateTransactionBatch = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTransactionBatch>>,
+    TError,
+    { data: BodyType<CreateTransactionBatchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createTransactionBatch>>,
+  TError,
+  { data: BodyType<CreateTransactionBatchBody> },
+  TContext
+> => {
+  return useMutation(getCreateTransactionBatchMutationOptions(options));
+};
+
 export const getListRecentTransactionsUrl = (
   params?: ListRecentTransactionsParams,
 ) => {
@@ -1534,10 +1854,6 @@ export type ListRecentTransactionsQueryResult = NonNullable<
 >;
 export type ListRecentTransactionsQueryError = ErrorType<unknown>;
 
-/**
- * @summary Get recent transactions
- */
-
 export function useListRecentTransactions<
   TData = Awaited<ReturnType<typeof listRecentTransactions>>,
   TError = ErrorType<unknown>,
@@ -1561,9 +1877,406 @@ export function useListRecentTransactions<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+export const getListExpensesUrl = (params?: ListExpensesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/expenses?${stringifiedParams}`
+    : `/api/expenses`;
+};
+
+export const listExpenses = async (
+  params?: ListExpensesParams,
+  options?: RequestInit,
+): Promise<Expense[]> => {
+  return customFetch<Expense[]>(getListExpensesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListExpensesQueryKey = (params?: ListExpensesParams) => {
+  return [`/api/expenses`, ...(params ? [params] : [])] as const;
+};
+
+export const getListExpensesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listExpenses>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListExpensesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExpenses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListExpensesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listExpenses>>> = ({
+    signal,
+  }) => listExpenses(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listExpenses>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListExpensesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listExpenses>>
+>;
+export type ListExpensesQueryError = ErrorType<unknown>;
+
+export function useListExpenses<
+  TData = Awaited<ReturnType<typeof listExpenses>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListExpensesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExpenses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListExpensesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateExpenseUrl = () => {
+  return `/api/expenses`;
+};
+
+export const createExpense = async (
+  createExpenseBody: CreateExpenseBody,
+  options?: RequestInit,
+): Promise<Expense> => {
+  return customFetch<Expense>(getCreateExpenseUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createExpenseBody),
+  });
+};
+
+export const getCreateExpenseMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExpense>>,
+    TError,
+    { data: BodyType<CreateExpenseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createExpense>>,
+  TError,
+  { data: BodyType<CreateExpenseBody> },
+  TContext
+> => {
+  const mutationKey = ["createExpense"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createExpense>>,
+    { data: BodyType<CreateExpenseBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createExpense(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateExpenseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createExpense>>
+>;
+export type CreateExpenseMutationBody = BodyType<CreateExpenseBody>;
+export type CreateExpenseMutationError = ErrorType<unknown>;
+
+export const useCreateExpense = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExpense>>,
+    TError,
+    { data: BodyType<CreateExpenseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createExpense>>,
+  TError,
+  { data: BodyType<CreateExpenseBody> },
+  TContext
+> => {
+  return useMutation(getCreateExpenseMutationOptions(options));
+};
+
+export const getDeleteExpenseUrl = (id: number) => {
+  return `/api/expenses/${id}`;
+};
+
+export const deleteExpense = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteExpenseUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteExpenseMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExpense>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteExpense>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteExpense"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteExpense>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteExpense(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteExpenseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteExpense>>
+>;
+
+export type DeleteExpenseMutationError = ErrorType<unknown>;
+
+export const useDeleteExpense = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExpense>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteExpense>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteExpenseMutationOptions(options));
+};
+
 /**
- * @summary Get dashboard summary statistics
+ * @summary Get shop settings
  */
+export const getGetSettingsUrl = () => {
+  return `/api/settings`;
+};
+
+export const getSettings = async (
+  options?: RequestInit,
+): Promise<ShopSettings> => {
+  return customFetch<ShopSettings>(getGetSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSettingsQueryKey = () => {
+  return [`/api/settings`] as const;
+};
+
+export const getGetSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSettingsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSettings>>> = ({
+    signal,
+  }) => getSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSettings>>
+>;
+export type GetSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get shop settings
+ */
+
+export function useGetSettings<
+  TData = Awaited<ReturnType<typeof getSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUpdateSettingsUrl = () => {
+  return `/api/settings`;
+};
+
+export const updateSettings = async (
+  updateSettingsBody: UpdateSettingsBody,
+  options?: RequestInit,
+): Promise<ShopSettings> => {
+  return customFetch<ShopSettings>(getUpdateSettingsUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSettingsBody),
+  });
+};
+
+export const getUpdateSettingsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSettings>>,
+    TError,
+    { data: BodyType<UpdateSettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSettings>>,
+  TError,
+  { data: BodyType<UpdateSettingsBody> },
+  TContext
+> => {
+  const mutationKey = ["updateSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSettings>>,
+    { data: BodyType<UpdateSettingsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSettings>>
+>;
+export type UpdateSettingsMutationBody = BodyType<UpdateSettingsBody>;
+export type UpdateSettingsMutationError = ErrorType<unknown>;
+
+export const useUpdateSettings = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSettings>>,
+    TError,
+    { data: BodyType<UpdateSettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSettings>>,
+  TError,
+  { data: BodyType<UpdateSettingsBody> },
+  TContext
+> => {
+  return useMutation(getUpdateSettingsMutationOptions(options));
+};
+
 export const getGetDashboardUrl = () => {
   return `/api/dashboard`;
 };
@@ -1611,10 +2324,6 @@ export type GetDashboardQueryResult = NonNullable<
   Awaited<ReturnType<typeof getDashboard>>
 >;
 export type GetDashboardQueryError = ErrorType<unknown>;
-
-/**
- * @summary Get dashboard summary statistics
- */
 
 export function useGetDashboard<
   TData = Awaited<ReturnType<typeof getDashboard>>,

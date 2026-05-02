@@ -5,6 +5,9 @@ import productsRouter from "./products";
 import rentalsRouter from "./rentals";
 import transactionsRouter from "./transactions";
 import dashboardRouter from "./dashboard";
+import rentalPackagesRouter from "./rental-packages";
+import expensesRouter from "./expenses";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -14,5 +17,8 @@ router.use(productsRouter);
 router.use(rentalsRouter);
 router.use(transactionsRouter);
 router.use(dashboardRouter);
+router.use(rentalPackagesRouter);
+router.use(expensesRouter);
+router.use(settingsRouter);
 
 export default router;

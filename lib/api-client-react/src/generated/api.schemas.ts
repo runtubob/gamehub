@@ -20,7 +20,6 @@ export interface Unit {
   id: number;
   name: string;
   status: UnitStatus;
-  /** Rate in IDR per hour */
   hourlyRate: number;
   createdAt: string;
 }
@@ -47,9 +46,7 @@ export interface UpdateUnitBody {
 export interface Product {
   id: number;
   name: string;
-  /** Selling price in IDR */
   price: number;
-  /** Cost/modal price in IDR */
   costPrice: number;
   stock: number;
   createdAt: string;
@@ -69,6 +66,32 @@ export interface UpdateProductBody {
   stock?: number;
 }
 
+export interface RentalPackage {
+  id: number;
+  label: string;
+  durationMinutes: number;
+  price: number;
+  costPrice: number;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface CreateRentalPackageBody {
+  label: string;
+  durationMinutes: number;
+  price: number;
+  costPrice?: number;
+  sortOrder?: number;
+}
+
+export interface UpdateRentalPackageBody {
+  label?: string;
+  durationMinutes?: number;
+  price?: number;
+  costPrice?: number;
+  sortOrder?: number;
+}
+
 export type RentalStatus = (typeof RentalStatus)[keyof typeof RentalStatus];
 
 export const RentalStatus = {
@@ -81,10 +104,11 @@ export interface Rental {
   unitId: number;
   unitName: string;
   customerName: string;
+  packageId?: number | null;
+  packageLabel?: string | null;
   startTime: string;
   endTime?: string | null;
   durationMinutes?: number | null;
-  /** Total cost in IDR */
   totalCost?: number | null;
   status: RentalStatus;
   createdAt: string;
@@ -95,16 +119,29 @@ export interface ActiveRental {
   unitId: number;
   unitName: string;
   customerName: string;
+  packageLabel: string;
   startTime: string;
-  elapsedMinutes: number;
-  /** Estimated cost so far in IDR */
-  estimatedCost: number;
-  hourlyRate: number;
+  endTime: string;
+  remainingSeconds: number;
+  totalCost: number;
 }
 
 export interface StartRentalBody {
   unitId: number;
   customerName: string;
+  packageId: number;
+}
+
+export type StopRentalBodyPaymentMethod =
+  (typeof StopRentalBodyPaymentMethod)[keyof typeof StopRentalBodyPaymentMethod];
+
+export const StopRentalBodyPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
+
+export interface StopRentalBody {
+  paymentMethod: StopRentalBodyPaymentMethod;
 }
 
 export type TransactionType =
@@ -115,19 +152,97 @@ export const TransactionType = {
   product: "product",
 } as const;
 
+export type TransactionPaymentMethod =
+  (typeof TransactionPaymentMethod)[keyof typeof TransactionPaymentMethod];
+
+export const TransactionPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
+
 export interface Transaction {
   id: number;
   type: TransactionType;
   description: string;
-  /** Amount in IDR */
   amount: number;
+  paymentMethod: TransactionPaymentMethod;
   rentalId?: number | null;
+  productId?: number | null;
+  quantity?: number | null;
   createdAt: string;
 }
+
+export type CreateTransactionBodyPaymentMethod =
+  (typeof CreateTransactionBodyPaymentMethod)[keyof typeof CreateTransactionBodyPaymentMethod];
+
+export const CreateTransactionBodyPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
 
 export interface CreateTransactionBody {
   productId: number;
   quantity?: number;
+  paymentMethod: CreateTransactionBodyPaymentMethod;
+}
+
+export type CreateTransactionBatchBodyPaymentMethod =
+  (typeof CreateTransactionBatchBodyPaymentMethod)[keyof typeof CreateTransactionBatchBodyPaymentMethod];
+
+export const CreateTransactionBatchBodyPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
+
+export type CreateTransactionBatchBodyItemsItem = {
+  productId: number;
+  quantity: number;
+};
+
+export interface CreateTransactionBatchBody {
+  paymentMethod: CreateTransactionBatchBodyPaymentMethod;
+  items: CreateTransactionBatchBodyItemsItem[];
+}
+
+export type ExpensePaymentMethod =
+  (typeof ExpensePaymentMethod)[keyof typeof ExpensePaymentMethod];
+
+export const ExpensePaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
+
+export interface Expense {
+  id: number;
+  description: string;
+  amount: number;
+  paymentMethod: ExpensePaymentMethod;
+  createdAt: string;
+}
+
+export type CreateExpenseBodyPaymentMethod =
+  (typeof CreateExpenseBodyPaymentMethod)[keyof typeof CreateExpenseBodyPaymentMethod];
+
+export const CreateExpenseBodyPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
+
+export interface CreateExpenseBody {
+  description: string;
+  amount: number;
+  paymentMethod: CreateExpenseBodyPaymentMethod;
+}
+
+export interface ShopSettings {
+  id: number;
+  shopName: string;
+  tagline: string;
+}
+
+export interface UpdateSettingsBody {
+  shopName?: string;
+  tagline?: string;
 }
 
 export interface DailyIncome {
@@ -136,10 +251,13 @@ export interface DailyIncome {
 }
 
 export interface DashboardStats {
-  /** Total income today in IDR */
   todayIncome: number;
-  /** Total profit today in IDR (income minus cost) */
   todayProfit: number;
+  cashIncome: number;
+  qrisIncome: number;
+  todayExpenses: number;
+  cashExpenses: number;
+  qrisExpenses: number;
   activeRentals: number;
   availableUnits: number;
   totalUnits: number;
@@ -155,9 +273,6 @@ export interface DeleteResult {
 
 export type ListRentalsParams = {
   status?: ListRentalsStatus;
-  /**
-   * Filter by date (YYYY-MM-DD)
-   */
   date?: string;
 };
 
@@ -170,9 +285,6 @@ export const ListRentalsStatus = {
 } as const;
 
 export type ListTransactionsParams = {
-  /**
-   * Filter by date (YYYY-MM-DD)
-   */
   date?: string;
   type?: ListTransactionsType;
 };
@@ -187,4 +299,8 @@ export const ListTransactionsType = {
 
 export type ListRecentTransactionsParams = {
   limit?: number;
+};
+
+export type ListExpensesParams = {
+  date?: string;
 };

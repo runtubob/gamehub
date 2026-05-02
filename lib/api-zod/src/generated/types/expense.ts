@@ -5,12 +5,12 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
+import type { ExpensePaymentMethod } from "./expensePaymentMethod";
 
-export interface Product {
+export interface Expense {
   id: number;
-  name: string;
-  price: number;
-  costPrice: number;
-  stock: number;
+  description: string;
+  amount: number;
+  paymentMethod: ExpensePaymentMethod;
   createdAt: Date;
 }

@@ -8,7 +8,6 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -22,7 +21,7 @@ export const ListUnitsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
   status: zod.enum(["available", "occupied"]),
-  hourlyRate: zod.number().describe("Rate in IDR per hour"),
+  hourlyRate: zod.number(),
   createdAt: zod.coerce.date(),
 });
 export const ListUnitsResponse = zod.array(ListUnitsResponseItem);
@@ -35,9 +34,6 @@ export const CreateUnitBody = zod.object({
   hourlyRate: zod.number(),
 });
 
-/**
- * @summary Get a specific unit
- */
 export const GetUnitParams = zod.object({
   id: zod.coerce.number(),
 });
@@ -46,13 +42,10 @@ export const GetUnitResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   status: zod.enum(["available", "occupied"]),
-  hourlyRate: zod.number().describe("Rate in IDR per hour"),
+  hourlyRate: zod.number(),
   createdAt: zod.coerce.date(),
 });
 
-/**
- * @summary Update a PlayStation unit
- */
 export const UpdateUnitParams = zod.object({
   id: zod.coerce.number(),
 });
@@ -67,13 +60,10 @@ export const UpdateUnitResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   status: zod.enum(["available", "occupied"]),
-  hourlyRate: zod.number().describe("Rate in IDR per hour"),
+  hourlyRate: zod.number(),
   createdAt: zod.coerce.date(),
 });
 
-/**
- * @summary Delete a PlayStation unit
- */
 export const DeleteUnitParams = zod.object({
   id: zod.coerce.number(),
 });
@@ -83,22 +73,16 @@ export const DeleteUnitResponse = zod.object({
   message: zod.string(),
 });
 
-/**
- * @summary List all products
- */
 export const ListProductsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
-  price: zod.number().describe("Selling price in IDR"),
-  costPrice: zod.number().describe("Cost\/modal price in IDR"),
+  price: zod.number(),
+  costPrice: zod.number(),
   stock: zod.number(),
   createdAt: zod.coerce.date(),
 });
 export const ListProductsResponse = zod.array(ListProductsResponseItem);
 
-/**
- * @summary Add a new product
- */
 export const CreateProductBody = zod.object({
   name: zod.string(),
   price: zod.number(),
@@ -106,9 +90,6 @@ export const CreateProductBody = zod.object({
   stock: zod.number(),
 });
 
-/**
- * @summary Get a specific product
- */
 export const GetProductParams = zod.object({
   id: zod.coerce.number(),
 });
@@ -116,15 +97,12 @@ export const GetProductParams = zod.object({
 export const GetProductResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
-  price: zod.number().describe("Selling price in IDR"),
-  costPrice: zod.number().describe("Cost\/modal price in IDR"),
+  price: zod.number(),
+  costPrice: zod.number(),
   stock: zod.number(),
   createdAt: zod.coerce.date(),
 });
 
-/**
- * @summary Update a product
- */
 export const UpdateProductParams = zod.object({
   id: zod.coerce.number(),
 });
@@ -139,15 +117,12 @@ export const UpdateProductBody = zod.object({
 export const UpdateProductResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
-  price: zod.number().describe("Selling price in IDR"),
-  costPrice: zod.number().describe("Cost\/modal price in IDR"),
+  price: zod.number(),
+  costPrice: zod.number(),
   stock: zod.number(),
   createdAt: zod.coerce.date(),
 });
 
-/**
- * @summary Delete a product
- */
 export const DeleteProductParams = zod.object({
   id: zod.coerce.number(),
 });
@@ -158,8 +133,60 @@ export const DeleteProductResponse = zod.object({
 });
 
 /**
- * @summary List all rentals
+ * @summary List all rental packages
  */
+export const ListRentalPackagesResponseItem = zod.object({
+  id: zod.number(),
+  label: zod.string(),
+  durationMinutes: zod.number(),
+  price: zod.number(),
+  costPrice: zod.number(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListRentalPackagesResponse = zod.array(
+  ListRentalPackagesResponseItem,
+);
+
+export const CreateRentalPackageBody = zod.object({
+  label: zod.string(),
+  durationMinutes: zod.number(),
+  price: zod.number(),
+  costPrice: zod.number().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateRentalPackageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateRentalPackageBody = zod.object({
+  label: zod.string().optional(),
+  durationMinutes: zod.number().optional(),
+  price: zod.number().optional(),
+  costPrice: zod.number().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateRentalPackageResponse = zod.object({
+  id: zod.number(),
+  label: zod.string(),
+  durationMinutes: zod.number(),
+  price: zod.number(),
+  costPrice: zod.number(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+export const DeleteRentalPackageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteRentalPackageResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
 export const ListRentalsQueryParams = zod.object({
   status: zod.enum(["active", "completed"]).optional(),
   date: zod.coerce.string().optional(),
@@ -170,45 +197,44 @@ export const ListRentalsResponseItem = zod.object({
   unitId: zod.number(),
   unitName: zod.string(),
   customerName: zod.string(),
+  packageId: zod.number().nullish(),
+  packageLabel: zod.string().nullish(),
   startTime: zod.coerce.date(),
   endTime: zod.coerce.date().nullish(),
   durationMinutes: zod.number().nullish(),
-  totalCost: zod.number().nullish().describe("Total cost in IDR"),
+  totalCost: zod.number().nullish(),
   status: zod.enum(["active", "completed"]),
   createdAt: zod.coerce.date(),
 });
 export const ListRentalsResponse = zod.array(ListRentalsResponseItem);
 
-/**
- * @summary Start a rental session
- */
 export const StartRentalBody = zod.object({
   unitId: zod.number(),
   customerName: zod.string(),
+  packageId: zod.number(),
 });
 
-/**
- * @summary List currently active rentals with elapsed time
- */
 export const ListActiveRentalsResponseItem = zod.object({
   id: zod.number(),
   unitId: zod.number(),
   unitName: zod.string(),
   customerName: zod.string(),
+  packageLabel: zod.string(),
   startTime: zod.coerce.date(),
-  elapsedMinutes: zod.number(),
-  estimatedCost: zod.number().describe("Estimated cost so far in IDR"),
-  hourlyRate: zod.number(),
+  endTime: zod.coerce.date(),
+  remainingSeconds: zod.number(),
+  totalCost: zod.number(),
 });
 export const ListActiveRentalsResponse = zod.array(
   ListActiveRentalsResponseItem,
 );
 
-/**
- * @summary Stop an active rental session
- */
 export const StopRentalParams = zod.object({
   id: zod.coerce.number(),
+});
+
+export const StopRentalBody = zod.object({
+  paymentMethod: zod.enum(["cash", "qris"]),
 });
 
 export const StopRentalResponse = zod.object({
@@ -216,17 +242,16 @@ export const StopRentalResponse = zod.object({
   unitId: zod.number(),
   unitName: zod.string(),
   customerName: zod.string(),
+  packageId: zod.number().nullish(),
+  packageLabel: zod.string().nullish(),
   startTime: zod.coerce.date(),
   endTime: zod.coerce.date().nullish(),
   durationMinutes: zod.number().nullish(),
-  totalCost: zod.number().nullish().describe("Total cost in IDR"),
+  totalCost: zod.number().nullish(),
   status: zod.enum(["active", "completed"]),
   createdAt: zod.coerce.date(),
 });
 
-/**
- * @summary List all transactions
- */
 export const ListTransactionsQueryParams = zod.object({
   date: zod.coerce.string().optional(),
   type: zod.enum(["rental", "product"]).optional(),
@@ -236,25 +261,36 @@ export const ListTransactionsResponseItem = zod.object({
   id: zod.number(),
   type: zod.enum(["rental", "product"]),
   description: zod.string(),
-  amount: zod.number().describe("Amount in IDR"),
+  amount: zod.number(),
+  paymentMethod: zod.enum(["cash", "qris"]),
   rentalId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  quantity: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListTransactionsResponse = zod.array(ListTransactionsResponseItem);
 
-/**
- * @summary Record a product sale transaction
- */
 export const createTransactionBodyQuantityDefault = 1;
 
 export const CreateTransactionBody = zod.object({
   productId: zod.number(),
   quantity: zod.number().default(createTransactionBodyQuantityDefault),
+  paymentMethod: zod.enum(["cash", "qris"]),
 });
 
 /**
- * @summary Get recent transactions
+ * @summary Record multiple product sale transactions at once (cart checkout)
  */
+export const CreateTransactionBatchBody = zod.object({
+  paymentMethod: zod.enum(["cash", "qris"]),
+  items: zod.array(
+    zod.object({
+      productId: zod.number(),
+      quantity: zod.number(),
+    }),
+  ),
+});
+
 export const listRecentTransactionsQueryLimitDefault = 10;
 
 export const ListRecentTransactionsQueryParams = zod.object({
@@ -265,22 +301,73 @@ export const ListRecentTransactionsResponseItem = zod.object({
   id: zod.number(),
   type: zod.enum(["rental", "product"]),
   description: zod.string(),
-  amount: zod.number().describe("Amount in IDR"),
+  amount: zod.number(),
+  paymentMethod: zod.enum(["cash", "qris"]),
   rentalId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  quantity: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListRecentTransactionsResponse = zod.array(
   ListRecentTransactionsResponseItem,
 );
 
+export const ListExpensesQueryParams = zod.object({
+  date: zod.coerce.string().optional(),
+});
+
+export const ListExpensesResponseItem = zod.object({
+  id: zod.number(),
+  description: zod.string(),
+  amount: zod.number(),
+  paymentMethod: zod.enum(["cash", "qris"]),
+  createdAt: zod.coerce.date(),
+});
+export const ListExpensesResponse = zod.array(ListExpensesResponseItem);
+
+export const CreateExpenseBody = zod.object({
+  description: zod.string(),
+  amount: zod.number(),
+  paymentMethod: zod.enum(["cash", "qris"]),
+});
+
+export const DeleteExpenseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteExpenseResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
 /**
- * @summary Get dashboard summary statistics
+ * @summary Get shop settings
  */
+export const GetSettingsResponse = zod.object({
+  id: zod.number(),
+  shopName: zod.string(),
+  tagline: zod.string(),
+});
+
+export const UpdateSettingsBody = zod.object({
+  shopName: zod.string().optional(),
+  tagline: zod.string().optional(),
+});
+
+export const UpdateSettingsResponse = zod.object({
+  id: zod.number(),
+  shopName: zod.string(),
+  tagline: zod.string(),
+});
+
 export const GetDashboardResponse = zod.object({
-  todayIncome: zod.number().describe("Total income today in IDR"),
-  todayProfit: zod
-    .number()
-    .describe("Total profit today in IDR (income minus cost)"),
+  todayIncome: zod.number(),
+  todayProfit: zod.number(),
+  cashIncome: zod.number(),
+  qrisIncome: zod.number(),
+  todayExpenses: zod.number(),
+  cashExpenses: zod.number(),
+  qrisExpenses: zod.number(),
   activeRentals: zod.number(),
   availableUnits: zod.number(),
   totalUnits: zod.number(),
