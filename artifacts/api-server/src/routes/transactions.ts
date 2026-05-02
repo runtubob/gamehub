@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, transactionsTable, productsTable } from "@workspace/db";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 import {
   CreateTransactionBody,
   ListTransactionsQueryParams,
@@ -79,6 +79,8 @@ router.post("/transactions", async (req, res) => {
       type: "product",
       description: `${product.name} x${quantity}`,
       amount,
+      productId: product.id,
+      quantity,
     })
     .returning();
 

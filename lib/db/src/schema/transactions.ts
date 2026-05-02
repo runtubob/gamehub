@@ -8,6 +8,8 @@ export const transactionsTable = pgTable("transactions", {
   description: text("description").notNull(),
   amount: integer("amount").notNull(),
   rentalId: integer("rental_id"),
+  productId: integer("product_id"),
+  quantity: integer("quantity"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

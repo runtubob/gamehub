@@ -9,8 +9,10 @@
 export interface Product {
   id: number;
   name: string;
-  /** Price in IDR */
+  /** Selling price in IDR */
   price: number;
+  /** Cost/modal price in IDR */
+  costPrice: number;
   stock: number;
   createdAt: Date;
 }

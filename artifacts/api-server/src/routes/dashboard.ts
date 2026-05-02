@@ -14,22 +14,12 @@ router.get("/dashboard", async (req, res) => {
   const [todayIncomeResult] = await db
     .select({ total: sql<number>`coalesce(sum(${transactionsTable.amount}), 0)` })
     .from(transactionsTable)
-    .where(
-      and(
-        gte(transactionsTable.createdAt, startOfToday),
-        lte(transactionsTable.createdAt, endOfToday)
-      )
-    );
+    .where(and(gte(transactionsTable.createdAt, startOfToday), lte(transactionsTable.createdAt, endOfToday)));
 
   const [todayTxCount] = await db
     .select({ count: sql<number>`count(*)` })
     .from(transactionsTable)
-    .where(
-      and(
-        gte(transactionsTable.createdAt, startOfToday),
-        lte(transactionsTable.createdAt, endOfToday)
-      )
-    );
+    .where(and(gte(transactionsTable.createdAt, startOfToday), lte(transactionsTable.createdAt, endOfToday)));
 
   const [activeRentalsCount] = await db
     .select({ count: sql<number>`count(*)` })
@@ -43,6 +33,31 @@ router.get("/dashboard", async (req, res) => {
     .select({ count: sql<number>`count(*)` })
     .from(productsTable);
 
+  // Rental income is 100% profit
+  const [rentalIncomeResult] = await db
+    .select({ total: sql<number>`coalesce(sum(${transactionsTable.amount}), 0)` })
+    .from(transactionsTable)
+    .where(and(
+      eq(transactionsTable.type, "rental"),
+      gte(transactionsTable.createdAt, startOfToday),
+      lte(transactionsTable.createdAt, endOfToday)
+    ));
+
+  // Product profit = (price - costPrice) * quantity, joined via productId
+  const [productProfitResult] = await db
+    .select({
+      profit: sql<number>`coalesce(sum(${transactionsTable.amount} - ${productsTable.costPrice} * ${transactionsTable.quantity}), 0)`,
+    })
+    .from(transactionsTable)
+    .leftJoin(productsTable, eq(transactionsTable.productId, productsTable.id))
+    .where(and(
+      eq(transactionsTable.type, "product"),
+      gte(transactionsTable.createdAt, startOfToday),
+      lte(transactionsTable.createdAt, endOfToday)
+    ));
+
+  const todayProfit = Number(rentalIncomeResult?.total ?? 0) + Number(productProfitResult?.profit ?? 0);
+
   const weeklyIncome = [];
   for (let i = 6; i >= 0; i--) {
     const day = new Date(now);
@@ -55,12 +70,7 @@ router.get("/dashboard", async (req, res) => {
     const [result] = await db
       .select({ total: sql<number>`coalesce(sum(${transactionsTable.amount}), 0)` })
       .from(transactionsTable)
-      .where(
-        and(
-          gte(transactionsTable.createdAt, startOfDay),
-          lte(transactionsTable.createdAt, endOfDay)
-        )
-      );
+      .where(and(gte(transactionsTable.createdAt, startOfDay), lte(transactionsTable.createdAt, endOfDay)));
 
     weeklyIncome.push({
       date: day.toISOString().split("T")[0],
@@ -70,6 +80,7 @@ router.get("/dashboard", async (req, res) => {
 
   res.json({
     todayIncome: Number(todayIncomeResult?.total ?? 0),
+    todayProfit,
     activeRentals: Number(activeRentalsCount?.count ?? 0),
     availableUnits,
     totalUnits: allUnits.length,

@@ -9,5 +9,6 @@
 export interface UpdateProductBody {
   name?: string;
   price?: number;
+  costPrice?: number;
   stock?: number;
 }

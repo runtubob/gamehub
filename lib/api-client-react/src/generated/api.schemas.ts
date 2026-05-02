@@ -47,8 +47,10 @@ export interface UpdateUnitBody {
 export interface Product {
   id: number;
   name: string;
-  /** Price in IDR */
+  /** Selling price in IDR */
   price: number;
+  /** Cost/modal price in IDR */
+  costPrice: number;
   stock: number;
   createdAt: string;
 }
@@ -56,12 +58,14 @@ export interface Product {
 export interface CreateProductBody {
   name: string;
   price: number;
+  costPrice?: number;
   stock: number;
 }
 
 export interface UpdateProductBody {
   name?: string;
   price?: number;
+  costPrice?: number;
   stock?: number;
 }
 
@@ -134,6 +138,8 @@ export interface DailyIncome {
 export interface DashboardStats {
   /** Total income today in IDR */
   todayIncome: number;
+  /** Total profit today in IDR (income minus cost) */
+  todayProfit: number;
   activeRentals: number;
   availableUnits: number;
   totalUnits: number;

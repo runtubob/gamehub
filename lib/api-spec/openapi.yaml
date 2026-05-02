@@ -436,7 +436,10 @@ components:
           type: string
         price:
           type: integer
-          description: Price in IDR
+          description: Selling price in IDR
+        costPrice:
+          type: integer
+          description: Cost/modal price in IDR
         stock:
           type: integer
         createdAt:
@@ -446,6 +449,7 @@ components:
         - id
         - name
         - price
+        - costPrice
         - stock
         - createdAt
 
@@ -455,6 +459,8 @@ components:
         name:
           type: string
         price:
+          type: integer
+        costPrice:
           type: integer
         stock:
           type: integer
@@ -469,6 +475,8 @@ components:
         name:
           type: string
         price:
+          type: integer
+        costPrice:
           type: integer
         stock:
           type: integer
@@ -598,6 +606,9 @@ components:
         todayIncome:
           type: integer
           description: Total income today in IDR
+        todayProfit:
+          type: integer
+          description: Total profit today in IDR (income minus cost)
         activeRentals:
           type: integer
         availableUnits:
@@ -614,6 +625,7 @@ components:
             $ref: "#/components/schemas/DailyIncome"
       required:
         - todayIncome
+        - todayProfit
         - activeRentals
         - availableUnits
         - totalUnits

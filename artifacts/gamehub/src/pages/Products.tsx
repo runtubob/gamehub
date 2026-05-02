@@ -9,7 +9,7 @@ import {
   getGetDashboardQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Package, Plus, ShoppingCart, Settings, Trash2, Check, X } from "lucide-react";
+import { Package, Plus, ShoppingCart, Settings, Trash2, Check, X, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function formatRp(n: number) {
@@ -28,10 +28,12 @@ export default function Products() {
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("");
+  const [newCostPrice, setNewCostPrice] = useState("");
   const [newStock, setNewStock] = useState("10");
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editCostPrice, setEditCostPrice] = useState("");
   const [editStock, setEditStock] = useState("");
   const [sellQty, setSellQty] = useState<Record<number, number>>({});
 
@@ -45,12 +47,19 @@ export default function Products() {
   const handleAdd = () => {
     if (!newName.trim() || !newPrice) return;
     createProduct.mutate(
-      { data: { name: newName.trim(), price: parseInt(newPrice), stock: parseInt(newStock) || 10 } },
+      {
+        data: {
+          name: newName.trim(),
+          price: parseInt(newPrice),
+          costPrice: parseInt(newCostPrice) || 0,
+          stock: parseInt(newStock) || 10,
+        },
+      },
       {
         onSuccess: () => {
           invalidate();
           setShowAdd(false);
-          setNewName(""); setNewPrice(""); setNewStock("10");
+          setNewName(""); setNewPrice(""); setNewCostPrice(""); setNewStock("10");
           toast({ title: "Produk berhasil ditambahkan" });
         },
       }
@@ -59,7 +68,15 @@ export default function Products() {
 
   const handleUpdate = (id: number) => {
     updateProduct.mutate(
-      { id, data: { name: editName, price: parseInt(editPrice), stock: parseInt(editStock) } },
+      {
+        id,
+        data: {
+          name: editName,
+          price: parseInt(editPrice),
+          costPrice: parseInt(editCostPrice) || 0,
+          stock: parseInt(editStock),
+        },
+      },
       {
         onSuccess: () => {
           invalidate();
@@ -96,6 +113,9 @@ export default function Products() {
     );
   };
 
+  const inputClass = "w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+  const inlineInputClass = "px-2 py-1 text-sm bg-input border border-border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -116,7 +136,7 @@ export default function Products() {
       {showAdd && (
         <div className="bg-card border border-card-border rounded-xl p-4 space-y-3">
           <h3 className="font-semibold text-sm">Produk Baru</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Nama Produk</label>
               <input
@@ -124,18 +144,29 @@ export default function Products() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="cth. Indomie Goreng"
-                className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Harga (Rp)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Harga Jual (Rp)</label>
               <input
                 data-testid="input-product-price"
                 type="number"
                 value={newPrice}
                 onChange={(e) => setNewPrice(e.target.value)}
                 placeholder="5000"
-                className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Harga Modal (Rp)</label>
+              <input
+                data-testid="input-product-cost"
+                type="number"
+                value={newCostPrice}
+                onChange={(e) => setNewCostPrice(e.target.value)}
+                placeholder="3000"
+                className={inputClass}
               />
             </div>
             <div>
@@ -145,7 +176,7 @@ export default function Products() {
                 type="number"
                 value={newStock}
                 onChange={(e) => setNewStock(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className={inputClass}
               />
             </div>
           </div>
@@ -186,7 +217,9 @@ export default function Products() {
             <thead>
               <tr className="border-b border-border">
                 <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nama</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Harga</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Harga Jual</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Harga Modal</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Margin</th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Stok</th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Jual</th>
                 <th className="px-5 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Aksi</th>
@@ -196,6 +229,9 @@ export default function Products() {
               {products.map((product) => {
                 const isEditing = editId === product.id;
                 const qty = sellQty[product.id] ?? 1;
+                const margin = product.costPrice > 0
+                  ? Math.round(((product.price - product.costPrice) / product.price) * 100)
+                  : null;
                 return (
                   <tr key={product.id} data-testid={`row-product-${product.id}`} className="hover:bg-muted/30 transition-colors">
                     <td className="px-5 py-3.5">
@@ -204,7 +240,7 @@ export default function Products() {
                           data-testid={`input-edit-product-name-${product.id}`}
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="px-2 py-1 text-sm bg-input border border-border rounded text-foreground w-40 focus:outline-none focus:ring-1 focus:ring-ring"
+                          className={`${inlineInputClass} w-40`}
                         />
                       ) : (
                         <div className="flex items-center gap-2">
@@ -220,7 +256,7 @@ export default function Products() {
                           type="number"
                           value={editPrice}
                           onChange={(e) => setEditPrice(e.target.value)}
-                          className="px-2 py-1 text-sm bg-input border border-border rounded text-foreground w-28 focus:outline-none focus:ring-1 focus:ring-ring"
+                          className={`${inlineInputClass} w-28`}
                         />
                       ) : (
                         <span data-testid={`text-price-${product.id}`} className="text-sm text-chart-3 font-medium">{formatRp(product.price)}</span>
@@ -229,11 +265,37 @@ export default function Products() {
                     <td className="px-5 py-3.5">
                       {isEditing ? (
                         <input
+                          data-testid={`input-edit-product-cost-${product.id}`}
+                          type="number"
+                          value={editCostPrice}
+                          onChange={(e) => setEditCostPrice(e.target.value)}
+                          placeholder="0"
+                          className={`${inlineInputClass} w-28`}
+                        />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {product.costPrice > 0 ? formatRp(product.costPrice) : <span className="text-xs italic">-</span>}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {!isEditing && margin !== null ? (
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${margin >= 30 ? "bg-chart-3/15 text-chart-3" : margin >= 15 ? "bg-yellow-500/15 text-yellow-400" : "bg-destructive/15 text-destructive"}`}>
+                          <TrendingUp size={10} />
+                          {margin}%
+                        </span>
+                      ) : !isEditing ? (
+                        <span className="text-xs text-muted-foreground italic">-</span>
+                      ) : null}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                        <input
                           data-testid={`input-edit-product-stock-${product.id}`}
                           type="number"
                           value={editStock}
                           onChange={(e) => setEditStock(e.target.value)}
-                          className="px-2 py-1 text-sm bg-input border border-border rounded text-foreground w-20 focus:outline-none focus:ring-1 focus:ring-ring"
+                          className={`${inlineInputClass} w-20`}
                         />
                       ) : (
                         <span
@@ -254,7 +316,7 @@ export default function Products() {
                             max={product.stock}
                             value={qty}
                             onChange={(e) => setSellQty((prev) => ({ ...prev, [product.id]: parseInt(e.target.value) || 1 }))}
-                            className="w-16 px-2 py-1 text-sm bg-input border border-border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            className={`${inlineInputClass} w-16`}
                           />
                           <button
                             data-testid={`button-sell-${product.id}`}
@@ -291,7 +353,13 @@ export default function Products() {
                           <>
                             <button
                               data-testid={`button-edit-product-${product.id}`}
-                              onClick={() => { setEditId(product.id); setEditName(product.name); setEditPrice(String(product.price)); setEditStock(String(product.stock)); }}
+                              onClick={() => {
+                                setEditId(product.id);
+                                setEditName(product.name);
+                                setEditPrice(String(product.price));
+                                setEditCostPrice(String(product.costPrice));
+                                setEditStock(String(product.stock));
+                              }}
                               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
                             >
                               <Settings size={14} />

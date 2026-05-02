@@ -89,7 +89,8 @@ export const DeleteUnitResponse = zod.object({
 export const ListProductsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
-  price: zod.number().describe("Price in IDR"),
+  price: zod.number().describe("Selling price in IDR"),
+  costPrice: zod.number().describe("Cost\/modal price in IDR"),
   stock: zod.number(),
   createdAt: zod.coerce.date(),
 });
@@ -101,6 +102,7 @@ export const ListProductsResponse = zod.array(ListProductsResponseItem);
 export const CreateProductBody = zod.object({
   name: zod.string(),
   price: zod.number(),
+  costPrice: zod.number().optional(),
   stock: zod.number(),
 });
 
@@ -114,7 +116,8 @@ export const GetProductParams = zod.object({
 export const GetProductResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
-  price: zod.number().describe("Price in IDR"),
+  price: zod.number().describe("Selling price in IDR"),
+  costPrice: zod.number().describe("Cost\/modal price in IDR"),
   stock: zod.number(),
   createdAt: zod.coerce.date(),
 });
@@ -129,13 +132,15 @@ export const UpdateProductParams = zod.object({
 export const UpdateProductBody = zod.object({
   name: zod.string().optional(),
   price: zod.number().optional(),
+  costPrice: zod.number().optional(),
   stock: zod.number().optional(),
 });
 
 export const UpdateProductResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
-  price: zod.number().describe("Price in IDR"),
+  price: zod.number().describe("Selling price in IDR"),
+  costPrice: zod.number().describe("Cost\/modal price in IDR"),
   stock: zod.number(),
   createdAt: zod.coerce.date(),
 });
@@ -273,6 +278,9 @@ export const ListRecentTransactionsResponse = zod.array(
  */
 export const GetDashboardResponse = zod.object({
   todayIncome: zod.number().describe("Total income today in IDR"),
+  todayProfit: zod
+    .number()
+    .describe("Total profit today in IDR (income minus cost)"),
   activeRentals: zod.number(),
   availableUnits: zod.number(),
   totalUnits: zod.number(),

@@ -1,6 +1,6 @@
 import { useGetDashboard, useListRecentTransactions } from "@workspace/api-client-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { BarChart3, Gamepad2, Package, Receipt, Monitor, Zap } from "lucide-react";
+import { BarChart3, Gamepad2, Package, Receipt, Monitor, Zap, TrendingUp } from "lucide-react";
 
 function formatRp(amount: number) {
   return "Rp " + amount.toLocaleString("id-ID");
@@ -26,7 +26,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           icon={<BarChart3 size={18} className="text-chart-1" />}
           label="Pendapatan Hari Ini"
@@ -54,6 +54,13 @@ export default function Dashboard() {
           value={statsLoading ? "..." : String(stats?.todayTransactions ?? 0)}
           accent="text-chart-4"
           data-testid="stat-today-transactions"
+        />
+        <StatCard
+          icon={<TrendingUp size={18} className="text-emerald-400" />}
+          label="Profit Hari Ini"
+          value={statsLoading ? "..." : formatRp(stats?.todayProfit ?? 0)}
+          accent="text-emerald-400"
+          data-testid="stat-today-profit"
         />
       </div>
 
