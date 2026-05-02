@@ -5,7 +5,7 @@ import {
   getListUnitsQueryKey, getListActiveRentalsQueryKey, getGetDashboardQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Gamepad2, Plus, Play, Settings, Trash2, Check, X } from "lucide-react";
+import { Gamepad2, Plus, Play, Settings, Trash2, Check, X, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function formatRp(n: number) {
@@ -26,6 +26,7 @@ export default function Units() {
   const [newName, setNewName] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const [rentalUnitId, setRentalUnitId] = useState<number | null>(null);
   const [selectedPkgId, setSelectedPkgId] = useState<number | null>(null);
@@ -51,6 +52,16 @@ export default function Units() {
     );
   };
 
+  const handleDelete = (id: number) => {
+    deleteUnit.mutate(
+      { id },
+      {
+        onSuccess: () => { invalidate(); setDeleteConfirmId(null); toast({ title: "Unit berhasil dihapus" }); },
+        onError: (e: Error) => toast({ title: "Gagal menghapus unit", description: e.message, variant: "destructive" }),
+      }
+    );
+  };
+
   const handleStartRental = () => {
     if (!rentalUnitId || !selectedPkgId) return;
     startRental.mutate(
@@ -67,6 +78,7 @@ export default function Units() {
     );
   };
 
+  const deleteTarget = units?.find((u) => u.id === deleteConfirmId);
   const inputClass = "w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
   return (
@@ -92,6 +104,41 @@ export default function Units() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId !== null && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-destructive/15 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} className="text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Hapus Unit?</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  <span className="font-medium text-foreground">{deleteTarget?.name}</span> akan dihapus permanen dan tidak bisa dikembalikan.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                disabled={deleteUnit.isPending}
+                className="flex-1 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {deleteUnit.isPending ? "Menghapus..." : "Ya, Hapus"}
+              </button>
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start Rental Modal */}
       {rentalUnitId && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-5 w-full max-w-md space-y-5">
@@ -151,7 +198,7 @@ export default function Units() {
                     ) : (
                       <>
                         <button onClick={() => { setEditId(unit.id); setEditName(unit.name); }} className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded"><Settings size={12} /></button>
-                        <button onClick={() => deleteUnit.mutate({ id: unit.id }, { onSuccess: () => { invalidate(); toast({ title: "Unit dihapus" }); } })} className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"><Trash2 size={12} /></button>
+                        <button onClick={() => setDeleteConfirmId(unit.id)} className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"><Trash2 size={12} /></button>
                       </>
                     )}
                   </div>

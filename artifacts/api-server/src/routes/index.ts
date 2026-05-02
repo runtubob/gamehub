@@ -16,6 +16,7 @@ import settingsRouter from "./settings";
 import reportsRouter from "./reports";
 import adminRouter from "./admin";
 import attendanceRouter from "./attendance";
+import shiftsRouter from "./shifts";
 
 const router: IRouter = Router();
 
@@ -41,5 +42,6 @@ router.use(reportsRouter);
 router.use(adminRouter);
 router.use(usersRouter);
 router.use(attendanceRouter);
+router.use(shiftsRouter);
 
 export default router;

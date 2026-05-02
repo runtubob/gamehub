@@ -10,6 +10,7 @@ export type CreateUserBodyRole =
   (typeof CreateUserBodyRole)[keyof typeof CreateUserBodyRole];
 
 export const CreateUserBodyRole = {
+  superadmin: "superadmin",
   admin: "admin",
   owner: "owner",
   karyawan: "karyawan",

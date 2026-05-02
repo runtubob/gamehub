@@ -23,6 +23,7 @@ tags:
   - name: reports
   - name: admin
   - name: attendance
+  - name: shifts
 
 paths:
   /healthz:
@@ -893,6 +894,80 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResult"
 
+  /shifts:
+    get:
+      operationId: listShifts
+      tags: [shifts]
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of shifts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Shift"
+
+  /shifts/active:
+    get:
+      operationId: getActiveShift
+      tags: [shifts]
+      responses:
+        "200":
+          description: Active shift for current user or null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shift"
+                nullable: true
+
+  /shifts/start:
+    post:
+      operationId: startShift
+      tags: [shifts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartShiftBody"
+      responses:
+        "201":
+          description: Shift started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shift"
+
+  /shifts/{id}/end:
+    put:
+      operationId: endShift
+      tags: [shifts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EndShiftBody"
+      responses:
+        "200":
+          description: Shift ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -931,7 +1006,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, owner, karyawan]
+          enum: [superadmin, admin, owner, karyawan]
         active:
           type: boolean
         createdAt:
@@ -950,7 +1025,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, owner, karyawan]
+          enum: [superadmin, admin, owner, karyawan]
       required: [username, password, name, role]
 
     UpdateUserBody:
@@ -963,7 +1038,7 @@ components:
           nullable: true
         role:
           type: string
-          enum: [admin, owner, karyawan]
+          enum: [superadmin, admin, owner, karyawan]
         active:
           type: boolean
 
@@ -1634,3 +1709,72 @@ components:
         message:
           type: string
       required: [success, message]
+
+    Shift:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+        role:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+        openingCash:
+          type: integer
+        closingCash:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [open, closed]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, userName, role, startTime, openingCash, status, createdAt]
+
+    StartShiftBody:
+      type: object
+      properties:
+        openingCash:
+          type: integer
+        notes:
+          type: string
+      required: [openingCash]
+
+    EndShiftBody:
+      type: object
+      properties:
+        closingCash:
+          type: integer
+        notes:
+          type: string
+      required: [closingCash]
+
+    ShiftSummary:
+      type: object
+      properties:
+        shift:
+          $ref: "#/components/schemas/Shift"
+        cashTransactions:
+          type: integer
+        qrisTransactions:
+          type: integer
+        totalIncome:
+          type: integer
+        expectedCash:
+          type: integer
+        variance:
+          type: integer
+      required: [shift, cashTransactions, qrisTransactions, totalIncome, expectedCash, variance]

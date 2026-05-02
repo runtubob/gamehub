@@ -14,6 +14,7 @@ import Expenses from "@/pages/Expenses";
 import Packages from "@/pages/Packages";
 import Laporan from "@/pages/Laporan";
 import UsersPage from "@/pages/Users";
+import Shifts from "@/pages/Shifts";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -53,6 +54,7 @@ function ProtectedApp() {
         {isAdmin && <Route path="/packages" component={Packages} />}
         {isAdmin && <Route path="/laporan" component={Laporan} />}
         {isAdmin && <Route path="/users" component={UsersPage} />}
+        <Route path="/shifts" component={Shifts} />
         {!isAdmin && <Route path="/dashboard"><Redirect to="/" /></Route>}
         {!isAdmin && <Route path="/transactions"><Redirect to="/" /></Route>}
         {!isAdmin && <Route path="/expenses"><Redirect to="/" /></Route>}

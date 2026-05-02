@@ -17,6 +17,7 @@ export interface LoginBody {
 export type AuthUserRole = (typeof AuthUserRole)[keyof typeof AuthUserRole];
 
 export const AuthUserRole = {
+  superadmin: "superadmin",
   admin: "admin",
   owner: "owner",
   karyawan: "karyawan",
@@ -40,6 +41,7 @@ export type CreateUserBodyRole =
   (typeof CreateUserBodyRole)[keyof typeof CreateUserBodyRole];
 
 export const CreateUserBodyRole = {
+  superadmin: "superadmin",
   admin: "admin",
   owner: "owner",
   karyawan: "karyawan",
@@ -56,6 +58,7 @@ export type UpdateUserBodyRole =
   (typeof UpdateUserBodyRole)[keyof typeof UpdateUserBodyRole];
 
 export const UpdateUserBodyRole = {
+  superadmin: "superadmin",
   admin: "admin",
   owner: "owner",
   karyawan: "karyawan",
@@ -521,6 +524,46 @@ export interface DeleteResult {
   message: string;
 }
 
+export type ShiftStatus = (typeof ShiftStatus)[keyof typeof ShiftStatus];
+
+export const ShiftStatus = {
+  open: "open",
+  closed: "closed",
+} as const;
+
+export interface Shift {
+  id: number;
+  userId: number;
+  userName: string;
+  role: string;
+  startTime: string;
+  endTime?: string | null;
+  openingCash: number;
+  closingCash?: number | null;
+  notes?: string | null;
+  status: ShiftStatus;
+  createdAt: string;
+}
+
+export interface StartShiftBody {
+  openingCash: number;
+  notes?: string;
+}
+
+export interface EndShiftBody {
+  closingCash: number;
+  notes?: string;
+}
+
+export interface ShiftSummary {
+  shift: Shift;
+  cashTransactions: number;
+  qrisTransactions: number;
+  totalIncome: number;
+  expectedCash: number;
+  variance: number;
+}
+
 export type ListProductsParams = {
   categoryId?: number;
 };
@@ -590,3 +633,7 @@ export const GetFinancialReportPeriod = {
   "6month": "6month",
   yearly: "yearly",
 } as const;
+
+export type ListShiftsParams = {
+  date?: string;
+};

@@ -9,6 +9,7 @@
 export type AuthUserRole = (typeof AuthUserRole)[keyof typeof AuthUserRole];
 
 export const AuthUserRole = {
+  superadmin: "superadmin",
   admin: "admin",
   owner: "owner",
   karyawan: "karyawan",

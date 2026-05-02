@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, Gamepad2, Package, Receipt, Zap, TrendingDown, Box,
-  Pencil, Upload, X, Check, BarChart3, Users, LogOut, Menu, Shield, Crown
+  Pencil, Upload, X, Check, BarChart3, Users, LogOut, Menu, Shield, Crown, CalendarClock
 } from "lucide-react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -78,6 +78,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: isAdmin ? "/units" : "/", icon: Gamepad2, label: "Unit PlayStation" },
     { href: "/active-rentals", icon: Zap, label: "Rental Aktif" },
     { href: "/products", icon: Package, label: "Produk" },
+    { href: "/shifts", icon: CalendarClock, label: "Shift & Handover" },
     ...(isAdmin ? [
       { href: "/transactions", icon: Receipt, label: "Transaksi" },
       { href: "/expenses", icon: TrendingDown, label: "Pengeluaran" },

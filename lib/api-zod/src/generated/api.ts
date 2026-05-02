@@ -22,7 +22,7 @@ export const LoginResponse = zod.object({
     id: zod.number(),
     username: zod.string(),
     name: zod.string(),
-    role: zod.enum(["admin", "owner", "karyawan"]),
+    role: zod.enum(["superadmin", "admin", "owner", "karyawan"]),
     active: zod.boolean(),
     createdAt: zod.coerce.date(),
   }),
@@ -32,7 +32,7 @@ export const GetMeResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   name: zod.string(),
-  role: zod.enum(["admin", "owner", "karyawan"]),
+  role: zod.enum(["superadmin", "admin", "owner", "karyawan"]),
   active: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
@@ -41,7 +41,7 @@ export const ListUsersResponseItem = zod.object({
   id: zod.number(),
   username: zod.string(),
   name: zod.string(),
-  role: zod.enum(["admin", "owner", "karyawan"]),
+  role: zod.enum(["superadmin", "admin", "owner", "karyawan"]),
   active: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
@@ -51,7 +51,7 @@ export const CreateUserBody = zod.object({
   username: zod.string(),
   password: zod.string(),
   name: zod.string(),
-  role: zod.enum(["admin", "owner", "karyawan"]),
+  role: zod.enum(["superadmin", "admin", "owner", "karyawan"]),
 });
 
 export const UpdateUserParams = zod.object({
@@ -61,7 +61,7 @@ export const UpdateUserParams = zod.object({
 export const UpdateUserBody = zod.object({
   name: zod.string().optional(),
   password: zod.string().nullish(),
-  role: zod.enum(["admin", "owner", "karyawan"]).optional(),
+  role: zod.enum(["superadmin", "admin", "owner", "karyawan"]).optional(),
   active: zod.boolean().optional(),
 });
 
@@ -69,7 +69,7 @@ export const UpdateUserResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   name: zod.string(),
-  role: zod.enum(["admin", "owner", "karyawan"]),
+  role: zod.enum(["superadmin", "admin", "owner", "karyawan"]),
   active: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
@@ -729,4 +729,74 @@ export const GetFinancialReportResponse = zod.object({
 export const ResetBalanceResponse = zod.object({
   success: zod.boolean(),
   message: zod.string(),
+});
+
+export const ListShiftsQueryParams = zod.object({
+  date: zod.coerce.string().optional(),
+});
+
+export const ListShiftsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  userName: zod.string(),
+  role: zod.string(),
+  startTime: zod.coerce.date(),
+  endTime: zod.coerce.date().nullish(),
+  openingCash: zod.number(),
+  closingCash: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["open", "closed"]),
+  createdAt: zod.coerce.date(),
+});
+export const ListShiftsResponse = zod.array(ListShiftsResponseItem);
+
+export const GetActiveShiftResponse = zod
+  .object({
+    id: zod.number(),
+    userId: zod.number(),
+    userName: zod.string(),
+    role: zod.string(),
+    startTime: zod.coerce.date(),
+    endTime: zod.coerce.date().nullish(),
+    openingCash: zod.number(),
+    closingCash: zod.number().nullish(),
+    notes: zod.string().nullish(),
+    status: zod.enum(["open", "closed"]),
+    createdAt: zod.coerce.date(),
+  })
+  .nullable();
+
+export const StartShiftBody = zod.object({
+  openingCash: zod.number(),
+  notes: zod.string().optional(),
+});
+
+export const EndShiftParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const EndShiftBody = zod.object({
+  closingCash: zod.number(),
+  notes: zod.string().optional(),
+});
+
+export const EndShiftResponse = zod.object({
+  shift: zod.object({
+    id: zod.number(),
+    userId: zod.number(),
+    userName: zod.string(),
+    role: zod.string(),
+    startTime: zod.coerce.date(),
+    endTime: zod.coerce.date().nullish(),
+    openingCash: zod.number(),
+    closingCash: zod.number().nullish(),
+    notes: zod.string().nullish(),
+    status: zod.enum(["open", "closed"]),
+    createdAt: zod.coerce.date(),
+  }),
+  cashTransactions: zod.number(),
+  qrisTransactions: zod.number(),
+  totalIncome: zod.number(),
+  expectedCash: zod.number(),
+  variance: zod.number(),
 });
