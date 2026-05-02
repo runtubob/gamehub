@@ -350,6 +350,8 @@ export const ListRentalsResponseItem = zod.object({
   durationMinutes: zod.number().nullish(),
   totalCost: zod.number().nullish(),
   status: zod.enum(["active", "completed"]),
+  paymentStatus: zod.enum(["paid", "unpaid"]),
+  paymentMethod: zod.enum(["cash", "qris"]).nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListRentalsResponse = zod.array(ListRentalsResponseItem);
@@ -357,6 +359,8 @@ export const ListRentalsResponse = zod.array(ListRentalsResponseItem);
 export const StartRentalBody = zod.object({
   unitId: zod.number(),
   packageId: zod.number(),
+  payNow: zod.boolean().optional(),
+  paymentMethod: zod.enum(["cash", "qris"]).nullish(),
 });
 
 export const ListActiveRentalsResponseItem = zod.object({
@@ -369,6 +373,7 @@ export const ListActiveRentalsResponseItem = zod.object({
   endTime: zod.coerce.date(),
   remainingSeconds: zod.number(),
   totalCost: zod.number(),
+  paymentStatus: zod.enum(["paid", "unpaid"]),
 });
 export const ListActiveRentalsResponse = zod.array(
   ListActiveRentalsResponseItem,
@@ -394,6 +399,113 @@ export const StopRentalResponse = zod.object({
   durationMinutes: zod.number().nullish(),
   totalCost: zod.number().nullish(),
   status: zod.enum(["active", "completed"]),
+  paymentStatus: zod.enum(["paid", "unpaid"]),
+  paymentMethod: zod.enum(["cash", "qris"]).nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const PayRentalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PayRentalBody = zod.object({
+  paymentMethod: zod.enum(["cash", "qris"]),
+});
+
+export const PayRentalResponse = zod.object({
+  id: zod.number(),
+  unitId: zod.number(),
+  unitName: zod.string(),
+  customerName: zod.string(),
+  packageId: zod.number().nullish(),
+  packageLabel: zod.string().nullish(),
+  startTime: zod.coerce.date(),
+  endTime: zod.coerce.date().nullish(),
+  durationMinutes: zod.number().nullish(),
+  totalCost: zod.number().nullish(),
+  status: zod.enum(["active", "completed"]),
+  paymentStatus: zod.enum(["paid", "unpaid"]),
+  paymentMethod: zod.enum(["cash", "qris"]).nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const ExtendRentalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ExtendRentalBody = zod.object({
+  packageId: zod.number(),
+  payNow: zod.boolean().optional(),
+  paymentMethod: zod.enum(["cash", "qris"]).nullish(),
+});
+
+export const ExtendRentalResponse = zod.object({
+  id: zod.number(),
+  unitId: zod.number(),
+  unitName: zod.string(),
+  customerName: zod.string(),
+  packageId: zod.number().nullish(),
+  packageLabel: zod.string().nullish(),
+  startTime: zod.coerce.date(),
+  endTime: zod.coerce.date().nullish(),
+  durationMinutes: zod.number().nullish(),
+  totalCost: zod.number().nullish(),
+  status: zod.enum(["active", "completed"]),
+  paymentStatus: zod.enum(["paid", "unpaid"]),
+  paymentMethod: zod.enum(["cash", "qris"]).nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const ListAttendanceQueryParams = zod.object({
+  date: zod.coerce.string().optional(),
+  userId: zod.coerce.number().optional(),
+});
+
+export const ListAttendanceResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  userName: zod.string(),
+  date: zod.string(),
+  checkInTime: zod.coerce.date().nullish(),
+  checkOutTime: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListAttendanceResponse = zod.array(ListAttendanceResponseItem);
+
+export const GetTodayAttendanceResponse = zod.union([
+  zod.object({
+    id: zod.number(),
+    userId: zod.number(),
+    userName: zod.string(),
+    date: zod.string(),
+    checkInTime: zod.coerce.date().nullish(),
+    checkOutTime: zod.coerce.date().nullish(),
+    notes: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+  }),
+  zod.null(),
+]);
+
+export const CheckInResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  userName: zod.string(),
+  date: zod.string(),
+  checkInTime: zod.coerce.date().nullish(),
+  checkOutTime: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const CheckOutResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  userName: zod.string(),
+  date: zod.string(),
+  checkInTime: zod.coerce.date().nullish(),
+  checkOutTime: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 

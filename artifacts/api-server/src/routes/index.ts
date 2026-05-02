@@ -15,6 +15,7 @@ import expensesRouter from "./expenses";
 import settingsRouter from "./settings";
 import reportsRouter from "./reports";
 import adminRouter from "./admin";
+import attendanceRouter from "./attendance";
 
 const router: IRouter = Router();
 
@@ -39,5 +40,6 @@ router.use(settingsRouter);
 router.use(reportsRouter);
 router.use(adminRouter);
 router.use(usersRouter);
+router.use(attendanceRouter);
 
 export default router;

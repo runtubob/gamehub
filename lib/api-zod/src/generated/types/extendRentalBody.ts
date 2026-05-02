@@ -5,11 +5,10 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
-import type { StartRentalBodyPaymentMethod } from "./startRentalBodyPaymentMethod";
+import type { ExtendRentalBodyPaymentMethod } from "./extendRentalBodyPaymentMethod";
 
-export interface StartRentalBody {
-  unitId: number;
+export interface ExtendRentalBody {
   packageId: number;
   payNow?: boolean;
-  paymentMethod?: StartRentalBodyPaymentMethod;
+  paymentMethod?: ExtendRentalBodyPaymentMethod;
 }

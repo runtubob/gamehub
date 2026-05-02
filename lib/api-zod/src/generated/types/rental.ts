@@ -5,6 +5,8 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
+import type { RentalPaymentMethod } from "./rentalPaymentMethod";
+import type { RentalPaymentStatus } from "./rentalPaymentStatus";
 import type { RentalStatus } from "./rentalStatus";
 
 export interface Rental {
@@ -19,5 +21,7 @@ export interface Rental {
   durationMinutes?: number | null;
   totalCost?: number | null;
   status: RentalStatus;
+  paymentStatus: RentalPaymentStatus;
+  paymentMethod?: RentalPaymentMethod;
   createdAt: Date;
 }

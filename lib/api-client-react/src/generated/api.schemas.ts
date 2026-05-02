@@ -220,6 +220,23 @@ export const RentalStatus = {
   completed: "completed",
 } as const;
 
+export type RentalPaymentStatus =
+  (typeof RentalPaymentStatus)[keyof typeof RentalPaymentStatus];
+
+export const RentalPaymentStatus = {
+  paid: "paid",
+  unpaid: "unpaid",
+} as const;
+
+export type RentalPaymentMethod =
+  | (typeof RentalPaymentMethod)[keyof typeof RentalPaymentMethod]
+  | null;
+
+export const RentalPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
+
 export interface Rental {
   id: number;
   unitId: number;
@@ -232,8 +249,18 @@ export interface Rental {
   durationMinutes?: number | null;
   totalCost?: number | null;
   status: RentalStatus;
+  paymentStatus: RentalPaymentStatus;
+  paymentMethod?: RentalPaymentMethod;
   createdAt: string;
 }
+
+export type ActiveRentalPaymentStatus =
+  (typeof ActiveRentalPaymentStatus)[keyof typeof ActiveRentalPaymentStatus];
+
+export const ActiveRentalPaymentStatus = {
+  paid: "paid",
+  unpaid: "unpaid",
+} as const;
 
 export interface ActiveRental {
   id: number;
@@ -245,11 +272,23 @@ export interface ActiveRental {
   endTime: string;
   remainingSeconds: number;
   totalCost: number;
+  paymentStatus: ActiveRentalPaymentStatus;
 }
+
+export type StartRentalBodyPaymentMethod =
+  | (typeof StartRentalBodyPaymentMethod)[keyof typeof StartRentalBodyPaymentMethod]
+  | null;
+
+export const StartRentalBodyPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
 
 export interface StartRentalBody {
   unitId: number;
   packageId: number;
+  payNow?: boolean;
+  paymentMethod?: StartRentalBodyPaymentMethod;
 }
 
 export type StopRentalBodyPaymentMethod =
@@ -262,6 +301,44 @@ export const StopRentalBodyPaymentMethod = {
 
 export interface StopRentalBody {
   paymentMethod: StopRentalBodyPaymentMethod;
+}
+
+export type PayRentalBodyPaymentMethod =
+  (typeof PayRentalBodyPaymentMethod)[keyof typeof PayRentalBodyPaymentMethod];
+
+export const PayRentalBodyPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
+
+export interface PayRentalBody {
+  paymentMethod: PayRentalBodyPaymentMethod;
+}
+
+export type ExtendRentalBodyPaymentMethod =
+  | (typeof ExtendRentalBodyPaymentMethod)[keyof typeof ExtendRentalBodyPaymentMethod]
+  | null;
+
+export const ExtendRentalBodyPaymentMethod = {
+  cash: "cash",
+  qris: "qris",
+} as const;
+
+export interface ExtendRentalBody {
+  packageId: number;
+  payNow?: boolean;
+  paymentMethod?: ExtendRentalBodyPaymentMethod;
+}
+
+export interface AttendanceRecord {
+  id: number;
+  userId: number;
+  userName: string;
+  date: string;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  notes?: string | null;
+  createdAt: string;
 }
 
 export type TransactionType =
@@ -448,6 +525,11 @@ export const ListRentalsStatus = {
   active: "active",
   completed: "completed",
 } as const;
+
+export type ListAttendanceParams = {
+  date?: string;
+  userId?: number;
+};
 
 export type ListTransactionsParams = {
   date?: string;

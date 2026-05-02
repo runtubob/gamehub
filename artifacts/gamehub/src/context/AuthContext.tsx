@@ -81,8 +81,9 @@ export function useAuth() {
   return ctx;
 }
 
-export function canAccess(role: string | undefined, feature: "finance" | "settings" | "expenses" | "transactions" | "packages" | "users") {
+export function canAccess(role: string | undefined, feature: "finance" | "settings" | "expenses" | "transactions" | "packages" | "users" | "stock") {
   if (!role) return false;
   if (role === "admin" || role === "owner") return true;
+  if (role === "karyawan" && (feature === "expenses" || feature === "stock")) return true;
   return false;
 }

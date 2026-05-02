@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, rentalsTable, unitsTable, transactionsTable, rentalPackagesTable } from "@workspace/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { StartRentalBody, StopRentalBody, ListRentalsQueryParams } from "@workspace/api-zod";
+import { ListRentalsQueryParams } from "@workspace/api-zod";
 
 const router = Router();
 
@@ -17,6 +17,7 @@ router.get("/rentals/active", async (req, res) => {
       packageLabel: rental.packageLabel ?? "",
       startTime: rental.startTime, endTime: rental.endTime ?? rental.startTime,
       remainingSeconds, totalCost: rental.totalCost ?? 0,
+      paymentStatus: rental.paymentStatus,
     };
   });
   res.json(result);
@@ -41,41 +42,115 @@ router.get("/rentals", async (req, res) => {
 });
 
 router.post("/rentals", async (req, res) => {
-  const parsed = StartRentalBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const { unitId, packageId, payNow, paymentMethod } = req.body as {
+    unitId: number; packageId: number; payNow?: boolean; paymentMethod?: string;
+  };
+  if (!unitId || !packageId) { res.status(400).json({ error: "unitId dan packageId wajib." }); return; }
 
-  const [unit] = await db.select().from(unitsTable).where(eq(unitsTable.id, parsed.data.unitId));
+  const [unit] = await db.select().from(unitsTable).where(eq(unitsTable.id, unitId));
   if (!unit) { res.status(404).json({ error: "Unit tidak ditemukan." }); return; }
   if (unit.status === "occupied") { res.status(400).json({ error: "Unit sedang dipakai." }); return; }
 
-  const [pkg] = await db.select().from(rentalPackagesTable).where(eq(rentalPackagesTable.id, parsed.data.packageId));
+  const [pkg] = await db.select().from(rentalPackagesTable).where(eq(rentalPackagesTable.id, packageId));
   if (!pkg) { res.status(400).json({ error: "Paket tidak ditemukan." }); return; }
 
   const startTime = new Date();
   const endTime = new Date(startTime.getTime() + pkg.durationMinutes * 60 * 1000);
 
+  const isPaid = payNow === true && !!paymentMethod;
+
   const [rental] = await db.insert(rentalsTable).values({
-    unitId: parsed.data.unitId,
-    unitName: unit.name,
-    customerName: "—",
-    packageId: pkg.id,
-    packageLabel: pkg.label,
-    startTime, endTime,
-    durationMinutes: pkg.durationMinutes,
-    totalCost: pkg.price,
-    status: "active",
+    unitId, unitName: unit.name, customerName: "—",
+    packageId: pkg.id, packageLabel: pkg.label,
+    startTime, endTime, durationMinutes: pkg.durationMinutes,
+    totalCost: pkg.price, status: "active",
+    paymentStatus: isPaid ? "paid" : "unpaid",
+    paymentMethod: isPaid ? paymentMethod : null,
   }).returning();
 
-  await db.update(unitsTable).set({ status: "occupied" }).where(eq(unitsTable.id, parsed.data.unitId));
+  await db.update(unitsTable).set({ status: "occupied" }).where(eq(unitsTable.id, unitId));
+
+  if (isPaid) {
+    await db.insert(transactionsTable).values({
+      type: "rental",
+      description: `Rental ${unit.name} (${pkg.label})`,
+      amount: pkg.price,
+      paymentMethod: paymentMethod as "cash" | "qris",
+      rentalId: rental.id,
+    });
+  }
+
   res.status(201).json(rental);
+});
+
+router.post("/rentals/:id/pay", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { paymentMethod } = req.body as { paymentMethod: string };
+  if (!paymentMethod) { res.status(400).json({ error: "paymentMethod wajib." }); return; }
+
+  const [rental] = await db.select().from(rentalsTable).where(eq(rentalsTable.id, id));
+  if (!rental) { res.status(404).json({ error: "Rental tidak ditemukan." }); return; }
+  if (rental.paymentStatus === "paid") { res.status(400).json({ error: "Sudah dibayar." }); return; }
+
+  const [updated] = await db.update(rentalsTable)
+    .set({ paymentStatus: "paid", paymentMethod })
+    .where(eq(rentalsTable.id, id)).returning();
+
+  await db.insert(transactionsTable).values({
+    type: "rental",
+    description: `Rental ${rental.unitName} (${rental.packageLabel ?? ""})`,
+    amount: rental.totalCost ?? 0,
+    paymentMethod: paymentMethod as "cash" | "qris",
+    rentalId: rental.id,
+  });
+
+  res.json(updated);
+});
+
+router.post("/rentals/:id/extend", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { packageId, payNow, paymentMethod } = req.body as { packageId: number; payNow?: boolean; paymentMethod?: string };
+  if (!packageId) { res.status(400).json({ error: "packageId wajib." }); return; }
+
+  const [rental] = await db.select().from(rentalsTable).where(eq(rentalsTable.id, id));
+  if (!rental) { res.status(404).json({ error: "Rental tidak ditemukan." }); return; }
+  if (rental.status !== "active") { res.status(400).json({ error: "Rental tidak aktif." }); return; }
+
+  const [pkg] = await db.select().from(rentalPackagesTable).where(eq(rentalPackagesTable.id, packageId));
+  if (!pkg) { res.status(400).json({ error: "Paket tidak ditemukan." }); return; }
+
+  const now = new Date();
+  const currentEnd = rental.endTime ? new Date(rental.endTime) : now;
+  const baseTime = currentEnd < now ? now : currentEnd;
+  const newEndTime = new Date(baseTime.getTime() + pkg.durationMinutes * 60 * 1000);
+  const newDuration = (rental.durationMinutes ?? 0) + pkg.durationMinutes;
+  const newCost = (rental.totalCost ?? 0) + pkg.price;
+  const newLabel = rental.packageLabel ? `${rental.packageLabel} + ${pkg.label}` : pkg.label;
+
+  const [updated] = await db.update(rentalsTable)
+    .set({ endTime: newEndTime, durationMinutes: newDuration, totalCost: newCost, packageLabel: newLabel })
+    .where(eq(rentalsTable.id, id)).returning();
+
+  if (payNow && paymentMethod) {
+    await db.insert(transactionsTable).values({
+      type: "rental",
+      description: `Tambah Waktu ${rental.unitName} (+${pkg.label})`,
+      amount: pkg.price,
+      paymentMethod: paymentMethod as "cash" | "qris",
+      rentalId: rental.id,
+    });
+  }
+
+  res.json(updated);
 });
 
 router.post("/rentals/:id/stop", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-
-  const bodyParsed = StopRentalBody.safeParse(req.body);
-  if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
+  const { paymentMethod } = req.body as { paymentMethod: string };
+  if (!paymentMethod) { res.status(400).json({ error: "paymentMethod wajib." }); return; }
 
   const [rental] = await db.select().from(rentalsTable).where(eq(rentalsTable.id, id));
   if (!rental) { res.status(404).json({ error: "Rental tidak ditemukan." }); return; }
@@ -85,19 +160,26 @@ router.post("/rentals/:id/stop", async (req, res) => {
   const totalCost = rental.totalCost ?? 0;
   const durationMinutes = rental.durationMinutes ?? 0;
 
+  const wasUnpaid = rental.paymentStatus === "unpaid";
+
   const [updated] = await db.update(rentalsTable)
-    .set({ endTime: now, durationMinutes, totalCost, status: "completed" })
+    .set({
+      endTime: now, durationMinutes, totalCost, status: "completed",
+      paymentStatus: "paid", paymentMethod,
+    })
     .where(eq(rentalsTable.id, id)).returning();
 
   await db.update(unitsTable).set({ status: "available" }).where(eq(unitsTable.id, rental.unitId));
 
-  await db.insert(transactionsTable).values({
-    type: "rental",
-    description: `Rental ${rental.unitName} (${rental.packageLabel ?? durationMinutes + " menit"})`,
-    amount: totalCost,
-    paymentMethod: bodyParsed.data.paymentMethod,
-    rentalId: rental.id,
-  });
+  if (wasUnpaid) {
+    await db.insert(transactionsTable).values({
+      type: "rental",
+      description: `Rental ${rental.unitName} (${rental.packageLabel ?? durationMinutes + " menit"})`,
+      amount: totalCost,
+      paymentMethod: paymentMethod as "cash" | "qris",
+      rentalId: rental.id,
+    });
+  }
 
   res.json(updated);
 });

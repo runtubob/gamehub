@@ -14,6 +14,8 @@ export const rentalsTable = pgTable("rentals", {
   durationMinutes: integer("duration_minutes"),
   totalCost: integer("total_cost"),
   status: text("status").notNull().default("active"),
+  paymentStatus: text("payment_status").notNull().default("unpaid"),
+  paymentMethod: text("payment_method"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

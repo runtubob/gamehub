@@ -22,6 +22,7 @@ tags:
   - name: settings
   - name: reports
   - name: admin
+  - name: attendance
 
 paths:
   /healthz:
@@ -548,6 +549,115 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Rental"
+
+  /rentals/{id}/pay:
+    post:
+      operationId: payRental
+      tags: [rentals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayRentalBody"
+      responses:
+        "200":
+          description: Rental paid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rental"
+
+  /rentals/{id}/extend:
+    post:
+      operationId: extendRental
+      tags: [rentals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtendRentalBody"
+      responses:
+        "200":
+          description: Rental extended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rental"
+
+  /attendance:
+    get:
+      operationId: listAttendance
+      tags: [attendance]
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List attendance
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+
+  /attendance/today:
+    get:
+      operationId: getTodayAttendance
+      tags: [attendance]
+      responses:
+        "200":
+          description: Today's attendance for current user (null if not checked in)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AttendanceRecord"
+                  - type: "null"
+
+  /attendance/checkin:
+    post:
+      operationId: checkIn
+      tags: [attendance]
+      responses:
+        "200":
+          description: Checked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+
+  /attendance/checkout:
+    post:
+      operationId: checkOut
+      tags: [attendance]
+      responses:
+        "200":
+          description: Checked out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
 
   /transactions:
     get:
@@ -1107,10 +1217,17 @@ components:
         status:
           type: string
           enum: [active, completed]
+        paymentStatus:
+          type: string
+          enum: [paid, unpaid]
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+          nullable: true
         createdAt:
           type: string
           format: date-time
-      required: [id, unitId, unitName, customerName, startTime, status, createdAt]
+      required: [id, unitId, unitName, customerName, startTime, status, paymentStatus, createdAt]
 
     ActiveRental:
       type: object
@@ -1135,7 +1252,10 @@ components:
           type: integer
         totalCost:
           type: integer
-      required: [id, unitId, unitName, customerName, packageLabel, startTime, endTime, remainingSeconds, totalCost]
+        paymentStatus:
+          type: string
+          enum: [paid, unpaid]
+      required: [id, unitId, unitName, customerName, packageLabel, startTime, endTime, remainingSeconds, totalCost, paymentStatus]
 
     StartRentalBody:
       type: object
@@ -1144,6 +1264,12 @@ components:
           type: integer
         packageId:
           type: integer
+        payNow:
+          type: boolean
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+          nullable: true
       required: [unitId, packageId]
 
     StopRentalBody:
@@ -1153,6 +1279,54 @@ components:
           type: string
           enum: [cash, qris]
       required: [paymentMethod]
+
+    PayRentalBody:
+      type: object
+      properties:
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+      required: [paymentMethod]
+
+    ExtendRentalBody:
+      type: object
+      properties:
+        packageId:
+          type: integer
+        payNow:
+          type: boolean
+        paymentMethod:
+          type: string
+          enum: [cash, qris]
+          nullable: true
+      required: [packageId]
+
+    AttendanceRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+        date:
+          type: string
+        checkInTime:
+          type: string
+          format: date-time
+          nullable: true
+        checkOutTime:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, userName, date, createdAt]
 
     Transaction:
       type: object
