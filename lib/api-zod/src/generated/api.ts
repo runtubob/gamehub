@@ -11,6 +11,78 @@ export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
 
+export const LoginBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.number(),
+    username: zod.string(),
+    name: zod.string(),
+    role: zod.enum(["admin", "owner", "karyawan"]),
+    active: zod.boolean(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  name: zod.string(),
+  role: zod.enum(["admin", "owner", "karyawan"]),
+  active: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+export const ListUsersResponseItem = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  name: zod.string(),
+  role: zod.enum(["admin", "owner", "karyawan"]),
+  active: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+export const CreateUserBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+  name: zod.string(),
+  role: zod.enum(["admin", "owner", "karyawan"]),
+});
+
+export const UpdateUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateUserBody = zod.object({
+  name: zod.string().optional(),
+  password: zod.string().nullish(),
+  role: zod.enum(["admin", "owner", "karyawan"]).optional(),
+  active: zod.boolean().optional(),
+});
+
+export const UpdateUserResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  name: zod.string(),
+  role: zod.enum(["admin", "owner", "karyawan"]),
+  active: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+export const DeleteUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteUserResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
 export const ListUnitsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
@@ -284,7 +356,6 @@ export const ListRentalsResponse = zod.array(ListRentalsResponseItem);
 
 export const StartRentalBody = zod.object({
   unitId: zod.number(),
-  customerName: zod.string(),
   packageId: zod.number(),
 });
 
@@ -449,4 +520,74 @@ export const GetDashboardResponse = zod.object({
       income: zod.number(),
     }),
   ),
+});
+
+export const GetFinancialReportQueryParams = zod.object({
+  period: zod.enum([
+    "daily",
+    "weekly",
+    "monthly",
+    "3month",
+    "6month",
+    "yearly",
+  ]),
+  startDate: zod.coerce.string().optional(),
+  endDate: zod.coerce.string().optional(),
+});
+
+export const GetFinancialReportResponse = zod.object({
+  summary: zod.object({
+    totalIncome: zod.number(),
+    rentalIncome: zod.number(),
+    productIncome: zod.number(),
+    cashIncome: zod.number(),
+    qrisIncome: zod.number(),
+    totalExpenses: zod.number(),
+    cashExpenses: zod.number(),
+    qrisExpenses: zod.number(),
+    netProfit: zod.number(),
+    startDate: zod.string(),
+    endDate: zod.string(),
+  }),
+  periods: zod.array(
+    zod.object({
+      label: zod.string(),
+      income: zod.number(),
+      rentalIncome: zod.number(),
+      productIncome: zod.number(),
+      cashIncome: zod.number(),
+      qrisIncome: zod.number(),
+      expenses: zod.number(),
+      cashExpenses: zod.number(),
+      qrisExpenses: zod.number(),
+      profit: zod.number(),
+    }),
+  ),
+  transactions: zod.array(
+    zod.object({
+      id: zod.number(),
+      type: zod.enum(["rental", "product"]),
+      description: zod.string(),
+      amount: zod.number(),
+      paymentMethod: zod.enum(["cash", "qris"]),
+      rentalId: zod.number().nullish(),
+      productId: zod.number().nullish(),
+      quantity: zod.number().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  expenses: zod.array(
+    zod.object({
+      id: zod.number(),
+      description: zod.string(),
+      amount: zod.number(),
+      paymentMethod: zod.enum(["cash", "qris"]),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+export const ResetBalanceResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
 });

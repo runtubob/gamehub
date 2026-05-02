@@ -9,6 +9,65 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface LoginBody {
+  username: string;
+  password: string;
+}
+
+export type AuthUserRole = (typeof AuthUserRole)[keyof typeof AuthUserRole];
+
+export const AuthUserRole = {
+  admin: "admin",
+  owner: "owner",
+  karyawan: "karyawan",
+} as const;
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  name: string;
+  role: AuthUserRole;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: AuthUser;
+}
+
+export type CreateUserBodyRole =
+  (typeof CreateUserBodyRole)[keyof typeof CreateUserBodyRole];
+
+export const CreateUserBodyRole = {
+  admin: "admin",
+  owner: "owner",
+  karyawan: "karyawan",
+} as const;
+
+export interface CreateUserBody {
+  username: string;
+  password: string;
+  name: string;
+  role: CreateUserBodyRole;
+}
+
+export type UpdateUserBodyRole =
+  (typeof UpdateUserBodyRole)[keyof typeof UpdateUserBodyRole];
+
+export const UpdateUserBodyRole = {
+  admin: "admin",
+  owner: "owner",
+  karyawan: "karyawan",
+} as const;
+
+export interface UpdateUserBody {
+  name?: string;
+  password?: string | null;
+  role?: UpdateUserBodyRole;
+  active?: boolean;
+}
+
 export type UnitStatus = (typeof UnitStatus)[keyof typeof UnitStatus];
 
 export const UnitStatus = {
@@ -190,7 +249,6 @@ export interface ActiveRental {
 
 export interface StartRentalBody {
   unitId: number;
-  customerName: string;
   packageId: number;
 }
 
@@ -330,6 +388,40 @@ export interface DashboardStats {
   weeklyIncome: DailyIncome[];
 }
 
+export interface ReportSummary {
+  totalIncome: number;
+  rentalIncome: number;
+  productIncome: number;
+  cashIncome: number;
+  qrisIncome: number;
+  totalExpenses: number;
+  cashExpenses: number;
+  qrisExpenses: number;
+  netProfit: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface PeriodData {
+  label: string;
+  income: number;
+  rentalIncome: number;
+  productIncome: number;
+  cashIncome: number;
+  qrisIncome: number;
+  expenses: number;
+  cashExpenses: number;
+  qrisExpenses: number;
+  profit: number;
+}
+
+export interface FinancialReport {
+  summary: ReportSummary;
+  periods: PeriodData[];
+  transactions: Transaction[];
+  expenses: Expense[];
+}
+
 export interface DeleteResult {
   success: boolean;
   message: string;
@@ -377,3 +469,21 @@ export type ListRecentTransactionsParams = {
 export type ListExpensesParams = {
   date?: string;
 };
+
+export type GetFinancialReportParams = {
+  period: GetFinancialReportPeriod;
+  startDate?: string;
+  endDate?: string;
+};
+
+export type GetFinancialReportPeriod =
+  (typeof GetFinancialReportPeriod)[keyof typeof GetFinancialReportPeriod];
+
+export const GetFinancialReportPeriod = {
+  daily: "daily",
+  weekly: "weekly",
+  monthly: "monthly",
+  "3month": "3month",
+  "6month": "6month",
+  yearly: "yearly",
+} as const;

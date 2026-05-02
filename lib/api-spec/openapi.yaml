@@ -8,6 +8,8 @@ servers:
     description: Base API path
 tags:
   - name: health
+  - name: auth
+  - name: users
   - name: units
   - name: products
   - name: productCategories
@@ -18,6 +20,8 @@ tags:
   - name: rentalPackages
   - name: expenses
   - name: settings
+  - name: reports
+  - name: admin
 
 paths:
   /healthz:
@@ -31,6 +35,106 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuthUser"
+    post:
+      operationId: createUser
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+
+  /users/{id}:
+    put:
+      operationId: updateUser
+      tags: [users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
 
   /units:
     get:
@@ -618,6 +722,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardStats"
 
+  /reports/financial:
+    get:
+      operationId: getFinancialReport
+      tags: [reports]
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, 3month, 6month, yearly]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+        - name: endDate
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Financial report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialReport"
+
+  /admin/reset-balance:
+    post:
+      operationId: resetBalance
+      tags: [admin]
+      responses:
+        "200":
+          description: Balance reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
 components:
   schemas:
     HealthStatus:
@@ -626,6 +769,71 @@ components:
         status:
           type: string
       required: [status]
+
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/AuthUser"
+      required: [token, user]
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, owner, karyawan]
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, username, name, role, active, createdAt]
+
+    CreateUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, owner, karyawan]
+      required: [username, password, name, role]
+
+    UpdateUserBody:
+      type: object
+      properties:
+        name:
+          type: string
+        password:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [admin, owner, karyawan]
+        active:
+          type: boolean
 
     Unit:
       type: object
@@ -934,11 +1142,9 @@ components:
       properties:
         unitId:
           type: integer
-        customerName:
-          type: string
         packageId:
           type: integer
-      required: [unitId, customerName, packageId]
+      required: [unitId, packageId]
 
     StopRentalBody:
       type: object
@@ -1114,6 +1320,77 @@ components:
         income:
           type: integer
       required: [date, income]
+
+    FinancialReport:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/ReportSummary"
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/PeriodData"
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        expenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+      required: [summary, periods, transactions, expenses]
+
+    ReportSummary:
+      type: object
+      properties:
+        totalIncome:
+          type: integer
+        rentalIncome:
+          type: integer
+        productIncome:
+          type: integer
+        cashIncome:
+          type: integer
+        qrisIncome:
+          type: integer
+        totalExpenses:
+          type: integer
+        cashExpenses:
+          type: integer
+        qrisExpenses:
+          type: integer
+        netProfit:
+          type: integer
+        startDate:
+          type: string
+        endDate:
+          type: string
+      required: [totalIncome, rentalIncome, productIncome, cashIncome, qrisIncome, totalExpenses, cashExpenses, qrisExpenses, netProfit, startDate, endDate]
+
+    PeriodData:
+      type: object
+      properties:
+        label:
+          type: string
+        income:
+          type: integer
+        rentalIncome:
+          type: integer
+        productIncome:
+          type: integer
+        cashIncome:
+          type: integer
+        qrisIncome:
+          type: integer
+        expenses:
+          type: integer
+        cashExpenses:
+          type: integer
+        qrisExpenses:
+          type: integer
+        profit:
+          type: integer
+      required: [label, income, rentalIncome, productIncome, cashIncome, qrisIncome, expenses, cashExpenses, qrisExpenses, profit]
 
     DeleteResult:
       type: object

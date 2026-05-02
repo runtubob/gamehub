@@ -5,8 +5,9 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
+import type { AuthUser } from "./authUser";
 
-export interface StartRentalBody {
-  unitId: number;
-  packageId: number;
+export interface LoginResponse {
+  token: string;
+  user: AuthUser;
 }

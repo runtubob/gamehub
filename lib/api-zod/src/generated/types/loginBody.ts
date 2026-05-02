@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface StartRentalBody {
-  unitId: number;
-  packageId: number;
+export interface LoginBody {
+  username: string;
+  password: string;
 }
