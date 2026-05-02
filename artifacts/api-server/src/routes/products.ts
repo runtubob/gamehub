@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, productsTable, productCategoriesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { CreateProductBody, UpdateProductBody, UpdateProductParams, DeleteProductParams, GetProductParams } from "@workspace/api-zod";
 
 const router = Router();
@@ -32,7 +32,7 @@ router.get("/products", async (req, res) => {
   if (categoryId && !isNaN(categoryId)) {
     query = query.where(eq(productsTable.categoryId, categoryId));
   }
-  const products = await query.orderBy(productsTable.id);
+  const products = await query.orderBy(asc(productsTable.name));
   res.json(products);
 });
 
