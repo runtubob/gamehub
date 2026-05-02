@@ -82,8 +82,8 @@ export default function Laporan() {
     ]), "Per Periode");
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ["Tanggal", "Jenis", "Keterangan", "Jumlah", "Metode"],
-      ...transactions.map(t => [fmtShort(t.createdAt), t.type === "rental" ? "Rental" : "Produk", t.description, t.amount, t.paymentMethod.toUpperCase()]),
+      ["Tanggal", "Jenis", "Keterangan", "Jumlah", "Metode", "Kasir"],
+      ...transactions.map(t => [fmtShort(t.createdAt), t.type === "rental" ? "Rental" : "Produk", t.description, t.amount, t.paymentMethod.toUpperCase(), t.userName ?? "—"]),
     ]), "Transaksi");
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
@@ -144,8 +144,8 @@ export default function Laporan() {
 
     autoTable(doc, {
       startY: 26,
-      head: [["Tanggal", "Keterangan", "Jumlah", "Metode"]],
-      body: transactions.map(t => [fmtShort(t.createdAt), t.description, formatRp(t.amount), t.paymentMethod.toUpperCase()]),
+      head: [["Tanggal", "Keterangan", "Jumlah", "Metode", "Kasir"]],
+      body: transactions.map(t => [fmtShort(t.createdAt), t.description, formatRp(t.amount), t.paymentMethod.toUpperCase(), t.userName ?? "—"]),
       theme: "striped",
       headStyles: { fillColor: [59, 130, 246] },
       columnStyles: { 2: { halign: "right" } },
@@ -322,6 +322,7 @@ export default function Laporan() {
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">Keterangan</th>
                     <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Jumlah</th>
                     <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">Metode</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">Kasir</th>
                   </tr></thead>
                   <tbody className="divide-y divide-border">
                     {report.transactions.slice(0, 50).map((t) => (
@@ -330,6 +331,7 @@ export default function Laporan() {
                         <td className="px-4 py-2 text-xs text-foreground hidden sm:table-cell">{t.description}</td>
                         <td className="px-4 py-2 text-sm text-right text-chart-3 font-medium">{formatRp(t.amount)}</td>
                         <td className="px-4 py-2 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${t.paymentMethod === "cash" ? "bg-chart-3/15 text-chart-3" : "bg-primary/15 text-primary"}`}>{t.paymentMethod.toUpperCase()}</span></td>
+                        <td className="px-4 py-2 text-xs text-muted-foreground hidden md:table-cell">{t.userName ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>

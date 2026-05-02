@@ -13,6 +13,7 @@ export const transactionsTable = pgTable("transactions", {
   productId: integer("product_id"),
   quantity: integer("quantity"),
   discountAmount: integer("discount_amount").default(0).notNull(),
+  userName: text("user_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

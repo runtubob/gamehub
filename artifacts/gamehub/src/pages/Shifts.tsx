@@ -147,6 +147,7 @@ export default function Shifts() {
     shift: NonNullable<typeof activeShift>;
     cashTransactions: number;
     qrisTransactions: number;
+    cashExpenses: number;
     totalIncome: number;
     expectedCash: number;
     variance: number;
@@ -233,9 +234,16 @@ export default function Shifts() {
                   <p className="text-xs text-muted-foreground">Kas Awal</p>
                   <p className="font-bold text-foreground mt-0.5">{formatRp(summary.shift.openingCash)}</p>
                 </div>
+                {summary.cashExpenses > 0 && (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Pengeluaran Cash</p>
+                    <p className="font-bold text-destructive mt-0.5">−{formatRp(summary.cashExpenses)}</p>
+                  </div>
+                )}
                 <div className="bg-muted/30 rounded-lg p-3">
                   <p className="text-xs text-muted-foreground">Kas Seharusnya</p>
                   <p className="font-bold text-foreground mt-0.5">{formatRp(summary.expectedCash)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">awal + tunai masuk{summary.cashExpenses > 0 ? " − pengeluaran" : ""}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-3">
                   <p className="text-xs text-muted-foreground">Kas Aktual</p>

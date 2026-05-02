@@ -216,20 +216,22 @@ export default function Products() {
           <h1 className="text-xl md:text-2xl font-bold text-foreground">Produk</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Kelola stok dan penjualan produk</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowCatMgr(!showCatMgr)}
-            className="px-3 py-2 text-xs bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 font-medium">
-            Kategori
-          </button>
-          <button onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90">
-            <Plus size={15} /> Produk Baru
-          </button>
-        </div>
+        {superAdmin && (
+          <div className="flex gap-2">
+            <button onClick={() => setShowCatMgr(!showCatMgr)}
+              className="px-3 py-2 text-xs bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 font-medium">
+              Kategori
+            </button>
+            <button onClick={() => setShowAdd(!showAdd)}
+              className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90">
+              <Plus size={15} /> Produk Baru
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Category Manager */}
-      {showCatMgr && (
+      {showCatMgr && superAdmin && (
         <div className="bg-card border border-card-border rounded-xl p-4 space-y-3">
           <h3 className="font-semibold text-sm">Manajemen Kategori</h3>
           <div className="flex gap-2">
@@ -272,7 +274,7 @@ export default function Products() {
       </div>
 
       {/* Add Product Form */}
-      {showAdd && (
+      {showAdd && superAdmin && (
         <div className="bg-card border border-card-border rounded-xl p-5 space-y-4">
           <h3 className="font-semibold">Produk Baru</h3>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
@@ -482,22 +484,24 @@ export default function Products() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => {
-                            setEditId(product.id);
-                            setEditForm({
-                              name: product.name, categoryId: product.categoryId ? String(product.categoryId) : "",
-                              price: String(product.price), costPrice: String(product.costPrice), stock: String(product.stock),
-                              unitLabel: product.unitLabel ?? "pcs", hasPack: !!product.packSize,
-                              packSize: product.packSize ? String(product.packSize) : "",
-                              packLabel: product.packLabel ?? "bungkus",
-                              packPrice: product.packPrice ? String(product.packPrice) : "",
-                              packCostPrice: product.packCostPrice ? String(product.packCostPrice) : "",
-                            });
-                          }} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded"><Settings size={13} /></button>
-                          {isAdmin ? (
-                            <button onClick={() => setDeleteConfirm({ id: product.id, name: product.name })}
-                              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"><Trash2 size={13} /></button>
-                          ) : null}
+                          {superAdmin && (
+                            <>
+                              <button onClick={() => {
+                                setEditId(product.id);
+                                setEditForm({
+                                  name: product.name, categoryId: product.categoryId ? String(product.categoryId) : "",
+                                  price: String(product.price), costPrice: String(product.costPrice), stock: String(product.stock),
+                                  unitLabel: product.unitLabel ?? "pcs", hasPack: !!product.packSize,
+                                  packSize: product.packSize ? String(product.packSize) : "",
+                                  packLabel: product.packLabel ?? "bungkus",
+                                  packPrice: product.packPrice ? String(product.packPrice) : "",
+                                  packCostPrice: product.packCostPrice ? String(product.packCostPrice) : "",
+                                });
+                              }} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded"><Settings size={13} /></button>
+                              <button onClick={() => setDeleteConfirm({ id: product.id, name: product.name })}
+                                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"><Trash2 size={13} /></button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

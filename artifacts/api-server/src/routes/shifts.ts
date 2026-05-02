@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, shiftsTable, transactionsTable } from "@workspace/db";
+import { db, shiftsTable, transactionsTable, expensesTable } from "@workspace/db";
 import { eq, and, gte, lte, desc, sum } from "drizzle-orm";
 import { StartShiftBody, EndShiftBody } from "@workspace/api-zod";
 
@@ -109,14 +109,24 @@ router.put("/shifts/:id/end", async (req, res) => {
       gte(transactionsTable.createdAt, existing.startTime),
       lte(transactionsTable.createdAt, endTime),
     ));
+  const [cashExpRow] = await db
+    .select({ total: sum(expensesTable.amount) })
+    .from(expensesTable)
+    .where(and(
+      eq(expensesTable.paymentMethod, "cash"),
+      gte(expensesTable.createdAt, existing.startTime),
+      lte(expensesTable.createdAt, endTime),
+    ));
 
   const cashTransactions = Number(cashRow?.total ?? 0);
   const qrisTransactions = Number(qrisRow?.total ?? 0);
+  const cashExpenses = Number(cashExpRow?.total ?? 0);
   const totalIncome = cashTransactions + qrisTransactions;
-  const expectedCash = existing.openingCash + cashTransactions;
+  // Kas seharusnya = kas awal + pemasukan cash - pengeluaran cash
+  const expectedCash = existing.openingCash + cashTransactions - cashExpenses;
   const variance = parsed.data.closingCash - expectedCash;
 
-  res.json({ shift, cashTransactions, qrisTransactions, totalIncome, expectedCash, variance });
+  res.json({ shift, cashTransactions, qrisTransactions, cashExpenses, totalIncome, expectedCash, variance });
 });
 
 export default router;

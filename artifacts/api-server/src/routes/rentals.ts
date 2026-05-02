@@ -77,6 +77,7 @@ router.post("/rentals", async (req, res) => {
       amount: pkg.price,
       paymentMethod: paymentMethod as "cash" | "qris",
       rentalId: rental.id,
+      userName: req.user?.name ?? null,
     });
   }
 
@@ -103,6 +104,7 @@ router.post("/rentals/:id/pay", async (req, res) => {
     amount: rental.totalCost ?? 0,
     paymentMethod: paymentMethod as "cash" | "qris",
     rentalId: rental.id,
+    userName: req.user?.name ?? null,
   });
 
   res.json(updated);
@@ -140,6 +142,7 @@ router.post("/rentals/:id/extend", async (req, res) => {
       amount: pkg.price,
       paymentMethod: paymentMethod as "cash" | "qris",
       rentalId: rental.id,
+      userName: req.user?.name ?? null,
     });
   }
 
@@ -178,6 +181,7 @@ router.post("/rentals/:id/stop", async (req, res) => {
       amount: totalCost,
       paymentMethod: paymentMethod as "cash" | "qris",
       rentalId: rental.id,
+      userName: req.user?.name ?? null,
     });
   }
 

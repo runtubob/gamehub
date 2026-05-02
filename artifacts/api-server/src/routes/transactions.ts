@@ -98,6 +98,7 @@ router.post("/transactions/batch", requireAuth, async (req, res) => {
       paymentMethod,
       productId: info.product.id,
       quantity: info.stockDeducted,
+      userName: req.user?.name ?? null,
     }).returning();
     await db.update(productsTable).set({ stock: info.product.stock - info.stockDeducted }).where(eq(productsTable.id, info.product.id));
     results.push(tx);
@@ -131,7 +132,8 @@ router.post("/transactions", requireAuth, async (req, res) => {
   const [transaction] = await db.insert(transactionsTable).values({
     type: "product", description, amount, costAmount,
     paymentMethod: parsed.data.paymentMethod ?? "cash", productId: product.id,
-    quantity: stockDeducted, // simpan unit aktual yang dikurangi dari stok
+    quantity: stockDeducted,
+    userName: req.user?.name ?? null,
   }).returning();
   await db.update(productsTable).set({ stock: product.stock - stockDeducted }).where(eq(productsTable.id, product.id));
   res.status(201).json(transaction);
