@@ -1,11 +1,11 @@
 import { useState } from "react";
 import {
   useListUnits, useCreateUnit, useUpdateUnit, useDeleteUnit, useStartRental,
-  useListRentalPackages,
+  useListRentalPackages, useGetDashboard,
   getListUnitsQueryKey, getListActiveRentalsQueryKey, getGetDashboardQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Gamepad2, Plus, Play, Settings, Trash2, Check, X, AlertTriangle } from "lucide-react";
+import { Gamepad2, Plus, Play, Settings, Trash2, Check, X, AlertTriangle, Banknote, CreditCard, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function formatRp(n: number) {
@@ -15,6 +15,7 @@ function formatRp(n: number) {
 export default function Units() {
   const { data: units, isLoading } = useListUnits();
   const { data: packages } = useListRentalPackages();
+  const { data: dashboard } = useGetDashboard();
   const createUnit = useCreateUnit();
   const updateUnit = useUpdateUnit();
   const deleteUnit = useDeleteUnit();
@@ -92,6 +93,34 @@ export default function Units() {
           <Plus size={16} /> <span className="hidden sm:inline">Tambah Unit</span>
         </button>
       </div>
+
+      {/* Ringkasan Pendapatan Hari Ini */}
+      {dashboard && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-card border border-card-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp size={14} className="text-chart-3" />
+              <p className="text-xs text-muted-foreground">Pendapatan Hari Ini</p>
+            </div>
+            <p className="text-lg font-bold text-chart-3">{formatRp(dashboard.todayIncome ?? 0)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{dashboard.todayTransactions ?? 0} transaksi</p>
+          </div>
+          <div className="bg-card border border-card-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Banknote size={14} className="text-chart-3" />
+              <p className="text-xs text-muted-foreground">Cash</p>
+            </div>
+            <p className="text-lg font-bold text-foreground">{formatRp(dashboard.cashIncome ?? 0)}</p>
+          </div>
+          <div className="bg-card border border-card-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard size={14} className="text-primary" />
+              <p className="text-xs text-muted-foreground">QRIS</p>
+            </div>
+            <p className="text-lg font-bold text-foreground">{formatRp(dashboard.qrisIncome ?? 0)}</p>
+          </div>
+        </div>
+      )}
 
       {showAdd && (
         <div className="bg-card border border-card-border rounded-xl p-4 space-y-3">

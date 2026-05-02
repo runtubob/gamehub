@@ -79,9 +79,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/active-rentals", icon: Zap, label: "Rental Aktif" },
     { href: "/products", icon: Package, label: "Produk" },
     { href: "/shifts", icon: CalendarClock, label: "Shift & Handover" },
+    { href: "/expenses", icon: TrendingDown, label: "Pengeluaran" },
     ...(isAdmin ? [
       { href: "/transactions", icon: Receipt, label: "Transaksi" },
-      { href: "/expenses", icon: TrendingDown, label: "Pengeluaran" },
       { href: "/packages", icon: Box, label: "Paket Rental" },
       { href: "/laporan", icon: BarChart3, label: "Laporan Keuangan" },
       { href: "/users", icon: Users, label: "Pengguna" },

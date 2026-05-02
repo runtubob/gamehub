@@ -44,14 +44,17 @@ router.post("/transactions/batch", requireAuth, async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { paymentMethod, items } = parsed.data;
+  const discountAmount = (parsed.data as { discountAmount?: number }).discountAmount ?? 0;
   const results = [];
 
+  // Pre-fetch all products and validate stock first
+  type ItemInfo = { product: typeof productsTable.$inferSelect; qty: number; isPack: boolean; rawAmount: number; costAmount: number; stockDeducted: number; description: string };
+  const itemInfos: ItemInfo[] = [];
   for (const item of items) {
     const [product] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
     if (!product) continue;
     const qty = item.quantity ?? 1;
     const isPack = (item as { isPack?: boolean }).isPack === true;
-
     if (isPack) {
       if (!product.packPrice || !product.packSize) {
         res.status(400).json({ error: `Produk ${product.name} tidak memiliki harga pack` }); return;
@@ -60,31 +63,44 @@ router.post("/transactions/batch", requireAuth, async (req, res) => {
       if (product.stock < stockDeducted) {
         res.status(400).json({ error: `Stok ${product.name} tidak cukup (butuh ${stockDeducted} ${product.unitLabel})` }); return;
       }
-      const amount = product.packPrice * qty;
-      // FIX: pack profit = packPrice - packCostPrice (not per-unit costPrice)
-      const costAmount = (product.packCostPrice ?? 0) * qty;
-      const [tx] = await db.insert(transactionsTable).values({
-        type: "product",
-        description: `${product.name} x${qty} ${product.packLabel ?? "pack"}`,
-        amount, costAmount, paymentMethod, productId: product.id,
-        quantity: stockDeducted, // simpan unit aktual (bukan jumlah bungkus)
-      }).returning();
-      await db.update(productsTable).set({ stock: product.stock - stockDeducted }).where(eq(productsTable.id, product.id));
-      results.push(tx);
+      itemInfos.push({ product, qty, isPack, rawAmount: product.packPrice * qty, costAmount: (product.packCostPrice ?? 0) * qty, stockDeducted, description: `${product.name} x${qty} ${product.packLabel ?? "pack"}` });
     } else {
       if (product.stock < qty) {
         res.status(400).json({ error: `Stok ${product.name} tidak cukup` }); return;
       }
-      const amount = product.price * qty;
-      const costAmount = product.costPrice * qty;
-      const [tx] = await db.insert(transactionsTable).values({
-        type: "product",
-        description: `${product.name} x${qty} ${product.unitLabel ?? "pcs"}`,
-        amount, costAmount, paymentMethod, productId: product.id, quantity: qty,
-      }).returning();
-      await db.update(productsTable).set({ stock: product.stock - qty }).where(eq(productsTable.id, product.id));
-      results.push(tx);
+      itemInfos.push({ product, qty, isPack, rawAmount: product.price * qty, costAmount: product.costPrice * qty, stockDeducted: qty, description: `${product.name} x${qty} ${product.unitLabel ?? "pcs"}` });
     }
+  }
+
+  // Apply discount proportionally across all items
+  const cartTotal = itemInfos.reduce((s, i) => s + i.rawAmount, 0);
+  const safeDiscount = Math.min(discountAmount, cartTotal);
+
+  for (let idx = 0; idx < itemInfos.length; idx++) {
+    const info = itemInfos[idx];
+    // Distribute discount proportionally, last item absorbs rounding
+    let itemDiscount = 0;
+    if (safeDiscount > 0 && cartTotal > 0) {
+      if (idx === itemInfos.length - 1) {
+        const alreadyDistributed = results.reduce((s, r) => s + (r.discountAmount ?? 0), 0);
+        itemDiscount = safeDiscount - alreadyDistributed;
+      } else {
+        itemDiscount = Math.round(safeDiscount * info.rawAmount / cartTotal);
+      }
+    }
+    const finalAmount = info.rawAmount - itemDiscount;
+    const [tx] = await db.insert(transactionsTable).values({
+      type: "product",
+      description: info.description,
+      amount: finalAmount,
+      costAmount: info.costAmount,
+      discountAmount: itemDiscount,
+      paymentMethod,
+      productId: info.product.id,
+      quantity: info.stockDeducted,
+    }).returning();
+    await db.update(productsTable).set({ stock: info.product.stock - info.stockDeducted }).where(eq(productsTable.id, info.product.id));
+    results.push(tx);
   }
   res.status(201).json(results);
 });

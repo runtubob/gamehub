@@ -4126,6 +4126,87 @@ export const useStartShift = <
   return useMutation(getStartShiftMutationOptions(options));
 };
 
+export const getGetShiftTransactionsUrl = (id: number) => {
+  return `/api/shifts/${id}/transactions`;
+};
+
+export const getShiftTransactions = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Transaction[]> => {
+  return customFetch<Transaction[]>(getGetShiftTransactionsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetShiftTransactionsQueryKey = (id: number) => {
+  return [`/api/shifts/${id}/transactions`] as const;
+};
+
+export const getGetShiftTransactionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getShiftTransactions>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getShiftTransactions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetShiftTransactionsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getShiftTransactions>>
+  > = ({ signal }) => getShiftTransactions(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getShiftTransactions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetShiftTransactionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getShiftTransactions>>
+>;
+export type GetShiftTransactionsQueryError = ErrorType<unknown>;
+
+export function useGetShiftTransactions<
+  TData = Awaited<ReturnType<typeof getShiftTransactions>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getShiftTransactions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetShiftTransactionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
 export const getEndShiftUrl = (id: number) => {
   return `/api/shifts/${id}/end`;
 };

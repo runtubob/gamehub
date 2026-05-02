@@ -944,6 +944,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/Shift"
 
+  /shifts/{id}/transactions:
+    get:
+      operationId: getShiftTransactions
+      tags: [shifts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transactions during this shift
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+
   /shifts/{id}/end:
     put:
       operationId: endShift
@@ -1439,6 +1459,8 @@ components:
           type: integer
         costAmount:
           type: integer
+        discountAmount:
+          type: integer
         paymentMethod:
           type: string
           enum: [cash, qris]
@@ -1454,7 +1476,7 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, type, description, amount, costAmount, paymentMethod, createdAt]
+      required: [id, type, description, amount, costAmount, discountAmount, paymentMethod, createdAt]
 
     CreateTransactionBody:
       type: object
@@ -1477,6 +1499,9 @@ components:
         paymentMethod:
           type: string
           enum: [cash, qris]
+        discountAmount:
+          type: integer
+          default: 0
         items:
           type: array
           items:

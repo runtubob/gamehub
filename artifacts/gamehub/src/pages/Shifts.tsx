@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import {
-  useGetActiveShift, useStartShift, useEndShift, useListShifts,
+  useGetActiveShift, useStartShift, useEndShift, useListShifts, useGetShiftTransactions,
   getGetActiveShiftQueryKey, getListShiftsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Clock, Play, StopCircle, Wallet, TrendingUp, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Clock, Play, StopCircle, Wallet, TrendingUp, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Banknote, CreditCard, ShoppingBag, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function formatRp(n: number) {
@@ -47,6 +47,85 @@ function ElapsedTimer({ startTime }: { startTime: string }) {
     return () => clearInterval(id);
   }, [startTime]);
   return <span className="font-mono text-2xl font-bold text-primary">{elapsed}</span>;
+}
+
+function ShiftExpandedDetail({ shiftId }: { shiftId: number }) {
+  const { data: transactions, isLoading } = useGetShiftTransactions(shiftId);
+
+  const cashTotal = transactions?.filter((t) => t.paymentMethod === "cash").reduce((s, t) => s + t.amount, 0) ?? 0;
+  const qrisTotal = transactions?.filter((t) => t.paymentMethod === "qris").reduce((s, t) => s + t.amount, 0) ?? 0;
+  const totalDiscount = transactions?.reduce((s, t) => s + (t.discountAmount ?? 0), 0) ?? 0;
+
+  if (isLoading) return (
+    <div className="col-span-2 md:col-span-4 h-8 bg-muted/20 rounded animate-pulse" />
+  );
+  if (!transactions?.length) return (
+    <div className="col-span-2 md:col-span-4 text-center py-3 text-sm text-muted-foreground">
+      Belum ada transaksi di shift ini
+    </div>
+  );
+
+  return (
+    <div className="col-span-2 md:col-span-4 space-y-3 pt-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="bg-chart-3/10 border border-chart-3/20 rounded-lg p-3">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Banknote size={11} className="text-chart-3" />
+            <p className="text-xs text-muted-foreground">Cash</p>
+          </div>
+          <p className="font-semibold text-sm text-chart-3">{formatRp(cashTotal)}</p>
+        </div>
+        <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <CreditCard size={11} className="text-primary" />
+            <p className="text-xs text-muted-foreground">QRIS</p>
+          </div>
+          <p className="font-semibold text-sm text-primary">{formatRp(qrisTotal)}</p>
+        </div>
+        <div className="bg-muted/20 rounded-lg p-3">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <ShoppingBag size={11} className="text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">Transaksi</p>
+          </div>
+          <p className="font-semibold text-sm text-foreground">{transactions.length} item</p>
+        </div>
+        {totalDiscount > 0 && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+            <p className="text-xs text-muted-foreground mb-0.5">Total Diskon</p>
+            <p className="font-semibold text-sm text-destructive">-{formatRp(totalDiscount)}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-muted/10 rounded-lg overflow-hidden border border-border">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20">
+          <Receipt size={12} className="text-muted-foreground" />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Daftar Transaksi Shift</p>
+        </div>
+        <div className="max-h-52 overflow-y-auto divide-y divide-border">
+          {transactions.map((tx) => (
+            <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 hover:bg-muted/10 transition-colors">
+              <div className="flex items-center gap-2 min-w-0">
+                {tx.paymentMethod === "cash"
+                  ? <Banknote size={13} className="text-chart-3 shrink-0" />
+                  : <CreditCard size={13} className="text-primary shrink-0" />}
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{tx.description}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatTime(tx.createdAt)}</p>
+                </div>
+              </div>
+              <div className="text-right shrink-0 ml-3">
+                <p className="text-xs font-semibold text-foreground">{formatRp(tx.amount)}</p>
+                {tx.discountAmount > 0 && (
+                  <p className="text-[10px] text-destructive">-{formatRp(tx.discountAmount)} diskon</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Shifts() {
@@ -381,7 +460,7 @@ export default function Shifts() {
                     </div>
                   </button>
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-0 grid grid-cols-2 md:grid-cols-4 gap-2 border-t border-border">
+                    <div className="px-4 pb-4 pt-3 grid grid-cols-2 md:grid-cols-4 gap-2 border-t border-border">
                       <div className="bg-muted/20 rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">Kas Awal</p>
                         <p className="font-semibold text-sm text-foreground mt-0.5">{formatRp(shift.openingCash)}</p>
@@ -415,6 +494,7 @@ export default function Shifts() {
                           <p className="text-sm text-foreground mt-0.5">{shift.notes}</p>
                         </div>
                       )}
+                      <ShiftExpandedDetail shiftId={shift.id} />
                     </div>
                   )}
                 </div>

@@ -29,6 +29,23 @@ router.get("/shifts/active", async (req, res) => {
   res.json(shift ?? null);
 });
 
+router.get("/shifts/:id/transactions", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [shift] = await db.select().from(shiftsTable).where(eq(shiftsTable.id, id));
+  if (!shift) { res.status(404).json({ error: "Shift tidak ditemukan" }); return; }
+  const endTime = shift.endTime ?? new Date();
+  const transactions = await db
+    .select()
+    .from(transactionsTable)
+    .where(and(
+      gte(transactionsTable.createdAt, shift.startTime),
+      lte(transactionsTable.createdAt, endTime),
+    ))
+    .orderBy(desc(transactionsTable.createdAt));
+  res.json(transactions);
+});
+
 router.post("/shifts/start", async (req, res) => {
   const parsed = StartShiftBody.safeParse(req.body);
   if (!parsed.success) {

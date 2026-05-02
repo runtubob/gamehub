@@ -12,6 +12,7 @@ export const transactionsTable = pgTable("transactions", {
   rentalId: integer("rental_id"),
   productId: integer("product_id"),
   quantity: integer("quantity"),
+  discountAmount: integer("discount_amount").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

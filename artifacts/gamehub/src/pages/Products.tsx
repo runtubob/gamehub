@@ -14,7 +14,7 @@ import {
   History, ChevronDown, ChevronUp, Cigarette, AlertTriangle, ShoppingBag
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, canDelete } from "@/context/AuthContext";
+import { useAuth, canDelete, isAdminOrAbove } from "@/context/AuthContext";
 
 function formatRp(n: number) { return "Rp " + n.toLocaleString("id-ID"); }
 
@@ -44,6 +44,7 @@ export default function Products() {
   const { toast } = useToast();
   const { user } = useAuth();
   const superAdmin = canDelete(user?.role);
+  const isAdmin = isAdminOrAbove(user?.role);
 
   const { data: categories } = useListProductCategories();
   const createCategory = useCreateProductCategory();
@@ -91,8 +92,10 @@ export default function Products() {
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris">("cash");
+  const [discount, setDiscount] = useState("");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
+  const [deleteCatConfirm, setDeleteCatConfirm] = useState<{ id: number; name: string } | null>(null);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
@@ -129,17 +132,19 @@ export default function Products() {
     setCart((prev) => prev.filter((c) => !(c.productId === productId && c.isPack === isPack)));
   };
 
-  const cartTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+  const cartRawTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+  const discountAmount = Math.min(parseInt(discount) || 0, cartRawTotal);
+  const cartTotal = cartRawTotal - discountAmount;
 
   const handleCheckout = () => {
     if (!cart.length) return;
     createBatch.mutate(
-      { data: { paymentMethod, items: cart.map((c) => ({ productId: c.productId, quantity: c.quantity, isPack: c.isPack })) } },
+      { data: { paymentMethod, discountAmount: discountAmount || undefined, items: cart.map((c) => ({ productId: c.productId, quantity: c.quantity, isPack: c.isPack })) } },
       {
         onSuccess: () => {
-          invalidate(); setCart([]);
-          toast({ title: `Checkout berhasil — ${formatRp(cartTotal)} via ${paymentMethod.toUpperCase()}` });
+          invalidate(); setCart([]); setDiscount("");
+          toast({ title: `Checkout berhasil — ${formatRp(cartTotal)} via ${paymentMethod.toUpperCase()}${discountAmount > 0 ? ` (diskon ${formatRp(discountAmount)})` : ""}` });
         },
         onError: (err: Error) => toast({ title: "Checkout gagal", description: err.message, variant: "destructive" }),
       }
@@ -241,8 +246,8 @@ export default function Products() {
               {categories.map((c) => (
                 <div key={c.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/40 rounded-lg text-xs font-medium">
                   <span>{c.name}</span>
-                  {superAdmin && (
-                    <button onClick={() => deleteCategory.mutate({ id: c.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListProductCategoriesQueryKey() }) })}
+                  {isAdmin && (
+                    <button onClick={() => setDeleteCatConfirm({ id: c.id, name: c.name })}
                       className="text-muted-foreground hover:text-destructive"><X size={12} /></button>
                   )}
                 </div>
@@ -489,7 +494,7 @@ export default function Products() {
                               packCostPrice: product.packCostPrice ? String(product.packCostPrice) : "",
                             });
                           }} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded"><Settings size={13} /></button>
-                          {superAdmin ? (
+                          {isAdmin ? (
                             <button onClick={() => setDeleteConfirm({ id: product.id, name: product.name })}
                               className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"><Trash2 size={13} /></button>
                           ) : null}
@@ -569,27 +574,55 @@ export default function Products() {
           {/* Cart Footer */}
           <div className="px-4 py-4 border-t border-border bg-muted/5">
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-              {/* Payment method */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase">Metode Pembayaran</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setPaymentMethod("cash")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${paymentMethod === "cash" ? "border-chart-3 bg-chart-3/10 text-chart-3" : "border-border text-muted-foreground hover:border-chart-3/50"}`}>
-                    <Banknote size={16} /> Cash
-                  </button>
-                  <button onClick={() => setPaymentMethod("qris")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${paymentMethod === "qris" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                    <CreditCard size={16} /> QRIS
-                  </button>
+              {/* Payment method + Diskon */}
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground uppercase">Metode Pembayaran</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setPaymentMethod("cash")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${paymentMethod === "cash" ? "border-chart-3 bg-chart-3/10 text-chart-3" : "border-border text-muted-foreground hover:border-chart-3/50"}`}>
+                      <Banknote size={16} /> Cash
+                    </button>
+                    <button onClick={() => setPaymentMethod("qris")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${paymentMethod === "qris" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                      <CreditCard size={16} /> QRIS
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground uppercase">Diskon (Opsional)</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Rp</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={cartRawTotal}
+                      value={discount}
+                      onChange={(e) => setDiscount(e.target.value)}
+                      placeholder="0"
+                      className="w-32 px-3 py-1.5 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    {discountAmount > 0 && (
+                      <button onClick={() => setDiscount("")} className="text-xs text-muted-foreground hover:text-destructive">
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Total + Checkout */}
               <div className="flex items-center gap-4">
                 <div className="text-right">
+                  {discountAmount > 0 && (
+                    <p className="text-sm text-muted-foreground line-through">{formatRp(cartRawTotal)}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">Total Belanja</p>
                   <p className="text-2xl font-bold text-chart-3">{formatRp(cartTotal)}</p>
-                  <p className="text-xs text-muted-foreground">{cartCount} item • via {paymentMethod.toUpperCase()}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {cartCount} item • via {paymentMethod.toUpperCase()}
+                    {discountAmount > 0 && <span className="text-destructive ml-1">• diskon {formatRp(discountAmount)}</span>}
+                  </p>
                 </div>
                 <button onClick={handleCheckout} disabled={createBatch.isPending}
                   className="flex items-center gap-2 px-6 py-3 bg-chart-3 text-white rounded-xl text-sm font-bold hover:bg-chart-3/90 disabled:opacity-50 shadow-lg transition-all">
@@ -683,7 +716,41 @@ export default function Products() {
         </div>
       )}
 
-      {/* Delete Product Confirmation (superadmin only) */}
+      {/* Delete Category Confirmation */}
+      {deleteCatConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} className="text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Hapus Kategori?</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Produk yang terhubung tidak akan ikut terhapus.</p>
+              </div>
+            </div>
+            <div className="bg-muted/30 rounded-lg px-4 py-3">
+              <p className="text-sm font-medium text-foreground">{deleteCatConfirm.name}</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => deleteCategory.mutate({ id: deleteCatConfirm.id }, {
+                onSuccess: () => {
+                  queryClient.invalidateQueries({ queryKey: getListProductCategoriesQueryKey() });
+                  setDeleteCatConfirm(null);
+                  toast({ title: "Kategori dihapus" });
+                },
+                onError: () => toast({ title: "Gagal menghapus kategori", variant: "destructive" }),
+              })} disabled={deleteCategory.isPending}
+                className="flex-1 py-2.5 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90 disabled:opacity-50">
+                {deleteCategory.isPending ? "Menghapus..." : "Ya, Hapus"}
+              </button>
+              <button onClick={() => setDeleteCatConfirm(null)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Product Confirmation */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">

@@ -10,5 +10,6 @@ import type { CreateTransactionBatchBodyPaymentMethod } from "./createTransactio
 
 export interface CreateTransactionBatchBody {
   paymentMethod: CreateTransactionBatchBodyPaymentMethod;
+  discountAmount?: number;
   items: CreateTransactionBatchBodyItemsItem[];
 }

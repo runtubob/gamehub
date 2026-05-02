@@ -366,6 +366,7 @@ export interface Transaction {
   description: string;
   amount: number;
   costAmount: number;
+  discountAmount: number;
   paymentMethod: TransactionPaymentMethod;
   rentalId?: number | null;
   productId?: number | null;
@@ -404,6 +405,7 @@ export type CreateTransactionBatchBodyItemsItem = {
 
 export interface CreateTransactionBatchBody {
   paymentMethod: CreateTransactionBatchBodyPaymentMethod;
+  discountAmount?: number;
   items: CreateTransactionBatchBodyItemsItem[];
 }
 

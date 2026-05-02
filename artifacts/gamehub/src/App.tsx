@@ -50,14 +50,13 @@ function ProtectedApp() {
         <Route path="/active-rentals" component={ActiveRentals} />
         <Route path="/products" component={Products} />
         {isAdmin && <Route path="/transactions" component={Transactions} />}
-        {isAdmin && <Route path="/expenses" component={Expenses} />}
+        <Route path="/expenses" component={Expenses} />
         {isAdmin && <Route path="/packages" component={Packages} />}
         {isAdmin && <Route path="/laporan" component={Laporan} />}
         {isAdmin && <Route path="/users" component={UsersPage} />}
         <Route path="/shifts" component={Shifts} />
         {!isAdmin && <Route path="/dashboard"><Redirect to="/" /></Route>}
         {!isAdmin && <Route path="/transactions"><Redirect to="/" /></Route>}
-        {!isAdmin && <Route path="/expenses"><Redirect to="/" /></Route>}
         {!isAdmin && <Route path="/laporan"><Redirect to="/" /></Route>}
         {!isAdmin && <Route path="/users"><Redirect to="/" /></Route>}
         <Route component={NotFound} />

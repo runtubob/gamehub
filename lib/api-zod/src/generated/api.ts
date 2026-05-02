@@ -520,6 +520,7 @@ export const ListTransactionsResponseItem = zod.object({
   description: zod.string(),
   amount: zod.number(),
   costAmount: zod.number(),
+  discountAmount: zod.number(),
   paymentMethod: zod.enum(["cash", "qris"]),
   rentalId: zod.number().nullish(),
   productId: zod.number().nullish(),
@@ -537,8 +538,13 @@ export const CreateTransactionBody = zod.object({
   paymentMethod: zod.enum(["cash", "qris"]),
 });
 
+export const createTransactionBatchBodyDiscountAmountDefault = 0;
+
 export const CreateTransactionBatchBody = zod.object({
   paymentMethod: zod.enum(["cash", "qris"]),
+  discountAmount: zod
+    .number()
+    .default(createTransactionBatchBodyDiscountAmountDefault),
   items: zod.array(
     zod.object({
       productId: zod.number(),
@@ -568,6 +574,7 @@ export const ListRecentTransactionsResponseItem = zod.object({
   description: zod.string(),
   amount: zod.number(),
   costAmount: zod.number(),
+  discountAmount: zod.number(),
   paymentMethod: zod.enum(["cash", "qris"]),
   rentalId: zod.number().nullish(),
   productId: zod.number().nullish(),
@@ -708,6 +715,7 @@ export const GetFinancialReportResponse = zod.object({
       description: zod.string(),
       amount: zod.number(),
       costAmount: zod.number(),
+      discountAmount: zod.number(),
       paymentMethod: zod.enum(["cash", "qris"]),
       rentalId: zod.number().nullish(),
       productId: zod.number().nullish(),
@@ -770,6 +778,27 @@ export const StartShiftBody = zod.object({
   openingCash: zod.number(),
   notes: zod.string().optional(),
 });
+
+export const GetShiftTransactionsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetShiftTransactionsResponseItem = zod.object({
+  id: zod.number(),
+  type: zod.enum(["rental", "product"]),
+  description: zod.string(),
+  amount: zod.number(),
+  costAmount: zod.number(),
+  discountAmount: zod.number(),
+  paymentMethod: zod.enum(["cash", "qris"]),
+  rentalId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  quantity: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetShiftTransactionsResponse = zod.array(
+  GetShiftTransactionsResponseItem,
+);
 
 export const EndShiftParams = zod.object({
   id: zod.coerce.number(),
