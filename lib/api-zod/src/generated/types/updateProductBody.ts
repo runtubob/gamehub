@@ -8,7 +8,13 @@
 
 export interface UpdateProductBody {
   name?: string;
+  categoryId?: number | null;
   price?: number;
   costPrice?: number;
   stock?: number;
+  unitLabel?: string;
+  packSize?: number | null;
+  packLabel?: string | null;
+  packPrice?: number | null;
+  packCostPrice?: number | null;
 }

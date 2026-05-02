@@ -6,8 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type CreateTransactionBatchBodyItemsItem = {
-  productId: number;
-  quantity: number;
-  isPack?: boolean;
-};
+export interface ProductCategory {
+  id: number;
+  name: string;
+  createdAt: Date;
+}

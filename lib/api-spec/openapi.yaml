@@ -10,6 +10,8 @@ tags:
   - name: health
   - name: units
   - name: products
+  - name: productCategories
+  - name: stockAdjustments
   - name: rentals
   - name: transactions
   - name: dashboard
@@ -22,7 +24,6 @@ paths:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
       responses:
         "200":
           description: Healthy
@@ -35,7 +36,6 @@ paths:
     get:
       operationId: listUnits
       tags: [units]
-      summary: List all PlayStation units
       responses:
         "200":
           description: List of units
@@ -48,7 +48,6 @@ paths:
     post:
       operationId: createUnit
       tags: [units]
-      summary: Add a new PlayStation unit
       requestBody:
         required: true
         content:
@@ -119,10 +118,63 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResult"
 
+  /product-categories:
+    get:
+      operationId: listProductCategories
+      tags: [productCategories]
+      responses:
+        "200":
+          description: List of product categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductCategory"
+    post:
+      operationId: createProductCategory
+      tags: [productCategories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductCategoryBody"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductCategory"
+
+  /product-categories/{id}:
+    delete:
+      operationId: deleteProductCategory
+      tags: [productCategories]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Category deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
   /products:
     get:
       operationId: listProducts
       tags: [products]
+      parameters:
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: List of products
@@ -205,11 +257,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResult"
 
+  /stock-adjustments:
+    get:
+      operationId: listStockAdjustments
+      tags: [stockAdjustments]
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of stock adjustments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockAdjustment"
+    post:
+      operationId: createStockAdjustment
+      tags: [stockAdjustments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStockAdjustmentBody"
+      responses:
+        "201":
+          description: Stock adjusted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAdjustment"
+
   /rental-packages:
     get:
       operationId: listRentalPackages
       tags: [rentalPackages]
-      summary: List all rental packages
       responses:
         "200":
           description: List of rental packages
@@ -398,7 +489,6 @@ paths:
     post:
       operationId: createTransactionBatch
       tags: [transactions]
-      summary: Record multiple product sale transactions at once (cart checkout)
       requestBody:
         required: true
         content:
@@ -492,7 +582,6 @@ paths:
     get:
       operationId: getSettings
       tags: [settings]
-      summary: Get shop settings
       responses:
         "200":
           description: Shop settings
@@ -575,6 +664,25 @@ components:
           type: string
           enum: [available, occupied]
 
+    ProductCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, createdAt]
+
+    CreateProductCategoryBody:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
     Product:
       type: object
       properties:
@@ -582,28 +690,65 @@ components:
           type: integer
         name:
           type: string
+        categoryId:
+          type: integer
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
         price:
           type: integer
         costPrice:
           type: integer
         stock:
           type: integer
+        unitLabel:
+          type: string
+        packSize:
+          type: integer
+          nullable: true
+        packLabel:
+          type: string
+          nullable: true
+        packPrice:
+          type: integer
+          nullable: true
+        packCostPrice:
+          type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
-      required: [id, name, price, costPrice, stock, createdAt]
+      required: [id, name, price, costPrice, stock, unitLabel, createdAt]
 
     CreateProductBody:
       type: object
       properties:
         name:
           type: string
+        categoryId:
+          type: integer
+          nullable: true
         price:
           type: integer
         costPrice:
           type: integer
         stock:
           type: integer
+        unitLabel:
+          type: string
+        packSize:
+          type: integer
+          nullable: true
+        packLabel:
+          type: string
+          nullable: true
+        packPrice:
+          type: integer
+          nullable: true
+        packCostPrice:
+          type: integer
+          nullable: true
       required: [name, price, stock]
 
     UpdateProductBody:
@@ -611,12 +756,66 @@ components:
       properties:
         name:
           type: string
+        categoryId:
+          type: integer
+          nullable: true
         price:
           type: integer
         costPrice:
           type: integer
         stock:
           type: integer
+        unitLabel:
+          type: string
+        packSize:
+          type: integer
+          nullable: true
+        packLabel:
+          type: string
+          nullable: true
+        packPrice:
+          type: integer
+          nullable: true
+        packCostPrice:
+          type: integer
+          nullable: true
+
+    StockAdjustment:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        type:
+          type: string
+          enum: [add, reduce]
+        quantity:
+          type: integer
+        reason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, productId, productName, type, quantity, createdAt]
+
+    CreateStockAdjustmentBody:
+      type: object
+      properties:
+        productId:
+          type: integer
+        type:
+          type: string
+          enum: [add, reduce]
+        quantity:
+          type: integer
+        reason:
+          type: string
+          nullable: true
+      required: [productId, type, quantity]
 
     RentalPackage:
       type: object
@@ -786,6 +985,8 @@ components:
         quantity:
           type: integer
           default: 1
+        isPack:
+          type: boolean
         paymentMethod:
           type: string
           enum: [cash, qris]
@@ -806,6 +1007,8 @@ components:
                 type: integer
               quantity:
                 type: integer
+              isPack:
+                type: boolean
             required: [productId, quantity]
       required: [paymentMethod, items]
 

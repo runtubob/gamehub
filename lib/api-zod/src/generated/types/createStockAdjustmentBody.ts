@@ -5,9 +5,11 @@
  * API specification for GameHub PS Rental Management
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateStockAdjustmentBodyType } from "./createStockAdjustmentBodyType";
 
-export type CreateTransactionBatchBodyItemsItem = {
+export interface CreateStockAdjustmentBody {
   productId: number;
+  type: CreateStockAdjustmentBodyType;
   quantity: number;
-  isPack?: boolean;
-};
+  reason?: string | null;
+}

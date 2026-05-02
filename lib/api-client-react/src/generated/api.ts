@@ -20,7 +20,9 @@ import type {
   ActiveRental,
   CreateExpenseBody,
   CreateProductBody,
+  CreateProductCategoryBody,
   CreateRentalPackageBody,
+  CreateStockAdjustmentBody,
   CreateTransactionBatchBody,
   CreateTransactionBody,
   CreateUnitBody,
@@ -29,14 +31,18 @@ import type {
   Expense,
   HealthStatus,
   ListExpensesParams,
+  ListProductsParams,
   ListRecentTransactionsParams,
   ListRentalsParams,
+  ListStockAdjustmentsParams,
   ListTransactionsParams,
   Product,
+  ProductCategory,
   Rental,
   RentalPackage,
   ShopSettings,
   StartRentalBody,
+  StockAdjustment,
   StopRentalBody,
   Transaction,
   Unit,
@@ -55,9 +61,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-/**
- * @summary Health check
- */
 export const getHealthCheckUrl = () => {
   return `/api/healthz`;
 };
@@ -106,10 +109,6 @@ export type HealthCheckQueryResult = NonNullable<
 >;
 export type HealthCheckQueryError = ErrorType<unknown>;
 
-/**
- * @summary Health check
- */
-
 export function useHealthCheck<
   TData = Awaited<ReturnType<typeof healthCheck>>,
   TError = ErrorType<unknown>,
@@ -130,9 +129,6 @@ export function useHealthCheck<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary List all PlayStation units
- */
 export const getListUnitsUrl = () => {
   return `/api/units`;
 };
@@ -175,10 +171,6 @@ export type ListUnitsQueryResult = NonNullable<
 >;
 export type ListUnitsQueryError = ErrorType<unknown>;
 
-/**
- * @summary List all PlayStation units
- */
-
 export function useListUnits<
   TData = Awaited<ReturnType<typeof listUnits>>,
   TError = ErrorType<unknown>,
@@ -195,9 +187,6 @@ export function useListUnits<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Add a new PlayStation unit
- */
 export const getCreateUnitUrl = () => {
   return `/api/units`;
 };
@@ -258,9 +247,6 @@ export type CreateUnitMutationResult = NonNullable<
 export type CreateUnitMutationBody = BodyType<CreateUnitBody>;
 export type CreateUnitMutationError = ErrorType<unknown>;
 
-/**
- * @summary Add a new PlayStation unit
- */
 export const useCreateUnit = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -510,29 +496,29 @@ export const useDeleteUnit = <
   return useMutation(getDeleteUnitMutationOptions(options));
 };
 
-export const getListProductsUrl = () => {
-  return `/api/products`;
+export const getListProductCategoriesUrl = () => {
+  return `/api/product-categories`;
 };
 
-export const listProducts = async (
+export const listProductCategories = async (
   options?: RequestInit,
-): Promise<Product[]> => {
-  return customFetch<Product[]>(getListProductsUrl(), {
+): Promise<ProductCategory[]> => {
+  return customFetch<ProductCategory[]>(getListProductCategoriesUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListProductsQueryKey = () => {
-  return [`/api/products`] as const;
+export const getListProductCategoriesQueryKey = () => {
+  return [`/api/product-categories`] as const;
 };
 
-export const getListProductsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listProducts>>,
+export const getListProductCategoriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProductCategories>>,
   TError = ErrorType<unknown>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listProducts>>,
+    Awaited<ReturnType<typeof listProductCategories>>,
     TError,
     TData
   >;
@@ -540,11 +526,254 @@ export const getListProductsQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListProductsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListProductCategoriesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listProductCategories>>
+  > = ({ signal }) => listProductCategories({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProductCategories>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProductCategoriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProductCategories>>
+>;
+export type ListProductCategoriesQueryError = ErrorType<unknown>;
+
+export function useListProductCategories<
+  TData = Awaited<ReturnType<typeof listProductCategories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProductCategories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProductCategoriesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateProductCategoryUrl = () => {
+  return `/api/product-categories`;
+};
+
+export const createProductCategory = async (
+  createProductCategoryBody: CreateProductCategoryBody,
+  options?: RequestInit,
+): Promise<ProductCategory> => {
+  return customFetch<ProductCategory>(getCreateProductCategoryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProductCategoryBody),
+  });
+};
+
+export const getCreateProductCategoryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProductCategory>>,
+    TError,
+    { data: BodyType<CreateProductCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProductCategory>>,
+  TError,
+  { data: BodyType<CreateProductCategoryBody> },
+  TContext
+> => {
+  const mutationKey = ["createProductCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProductCategory>>,
+    { data: BodyType<CreateProductCategoryBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProductCategory(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProductCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProductCategory>>
+>;
+export type CreateProductCategoryMutationBody =
+  BodyType<CreateProductCategoryBody>;
+export type CreateProductCategoryMutationError = ErrorType<unknown>;
+
+export const useCreateProductCategory = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProductCategory>>,
+    TError,
+    { data: BodyType<CreateProductCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProductCategory>>,
+  TError,
+  { data: BodyType<CreateProductCategoryBody> },
+  TContext
+> => {
+  return useMutation(getCreateProductCategoryMutationOptions(options));
+};
+
+export const getDeleteProductCategoryUrl = (id: number) => {
+  return `/api/product-categories/${id}`;
+};
+
+export const deleteProductCategory = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteProductCategoryUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteProductCategoryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProductCategory>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteProductCategory>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteProductCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteProductCategory>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteProductCategory(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteProductCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProductCategory>>
+>;
+
+export type DeleteProductCategoryMutationError = ErrorType<unknown>;
+
+export const useDeleteProductCategory = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProductCategory>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteProductCategory>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteProductCategoryMutationOptions(options));
+};
+
+export const getListProductsUrl = (params?: ListProductsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/products?${stringifiedParams}`
+    : `/api/products`;
+};
+
+export const listProducts = async (
+  params?: ListProductsParams,
+  options?: RequestInit,
+): Promise<Product[]> => {
+  return customFetch<Product[]>(getListProductsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProductsQueryKey = (params?: ListProductsParams) => {
+  return [`/api/products`, ...(params ? [params] : [])] as const;
+};
+
+export const getListProductsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProducts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListProductsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProducts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProductsQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listProducts>>> = ({
     signal,
-  }) => listProducts({ signal, ...requestOptions });
+  }) => listProducts(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listProducts>>,
@@ -561,15 +790,18 @@ export type ListProductsQueryError = ErrorType<unknown>;
 export function useListProducts<
   TData = Awaited<ReturnType<typeof listProducts>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listProducts>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListProductsQueryOptions(options);
+>(
+  params?: ListProductsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProducts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProductsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -897,9 +1129,180 @@ export const useDeleteProduct = <
   return useMutation(getDeleteProductMutationOptions(options));
 };
 
-/**
- * @summary List all rental packages
- */
+export const getListStockAdjustmentsUrl = (
+  params?: ListStockAdjustmentsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/stock-adjustments?${stringifiedParams}`
+    : `/api/stock-adjustments`;
+};
+
+export const listStockAdjustments = async (
+  params?: ListStockAdjustmentsParams,
+  options?: RequestInit,
+): Promise<StockAdjustment[]> => {
+  return customFetch<StockAdjustment[]>(getListStockAdjustmentsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListStockAdjustmentsQueryKey = (
+  params?: ListStockAdjustmentsParams,
+) => {
+  return [`/api/stock-adjustments`, ...(params ? [params] : [])] as const;
+};
+
+export const getListStockAdjustmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listStockAdjustments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListStockAdjustmentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listStockAdjustments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListStockAdjustmentsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listStockAdjustments>>
+  > = ({ signal }) =>
+    listStockAdjustments(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listStockAdjustments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListStockAdjustmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listStockAdjustments>>
+>;
+export type ListStockAdjustmentsQueryError = ErrorType<unknown>;
+
+export function useListStockAdjustments<
+  TData = Awaited<ReturnType<typeof listStockAdjustments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListStockAdjustmentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listStockAdjustments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListStockAdjustmentsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateStockAdjustmentUrl = () => {
+  return `/api/stock-adjustments`;
+};
+
+export const createStockAdjustment = async (
+  createStockAdjustmentBody: CreateStockAdjustmentBody,
+  options?: RequestInit,
+): Promise<StockAdjustment> => {
+  return customFetch<StockAdjustment>(getCreateStockAdjustmentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createStockAdjustmentBody),
+  });
+};
+
+export const getCreateStockAdjustmentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createStockAdjustment>>,
+    TError,
+    { data: BodyType<CreateStockAdjustmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createStockAdjustment>>,
+  TError,
+  { data: BodyType<CreateStockAdjustmentBody> },
+  TContext
+> => {
+  const mutationKey = ["createStockAdjustment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createStockAdjustment>>,
+    { data: BodyType<CreateStockAdjustmentBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createStockAdjustment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateStockAdjustmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createStockAdjustment>>
+>;
+export type CreateStockAdjustmentMutationBody =
+  BodyType<CreateStockAdjustmentBody>;
+export type CreateStockAdjustmentMutationError = ErrorType<unknown>;
+
+export const useCreateStockAdjustment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createStockAdjustment>>,
+    TError,
+    { data: BodyType<CreateStockAdjustmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createStockAdjustment>>,
+  TError,
+  { data: BodyType<CreateStockAdjustmentBody> },
+  TContext
+> => {
+  return useMutation(getCreateStockAdjustmentMutationOptions(options));
+};
+
 export const getListRentalPackagesUrl = () => {
   return `/api/rental-packages`;
 };
@@ -947,10 +1350,6 @@ export type ListRentalPackagesQueryResult = NonNullable<
   Awaited<ReturnType<typeof listRentalPackages>>
 >;
 export type ListRentalPackagesQueryError = ErrorType<unknown>;
-
-/**
- * @summary List all rental packages
- */
 
 export function useListRentalPackages<
   TData = Awaited<ReturnType<typeof listRentalPackages>>,
@@ -1697,9 +2096,6 @@ export const useCreateTransaction = <
   return useMutation(getCreateTransactionMutationOptions(options));
 };
 
-/**
- * @summary Record multiple product sale transactions at once (cart checkout)
- */
 export const getCreateTransactionBatchUrl = () => {
   return `/api/transactions/batch`;
 };
@@ -1761,9 +2157,6 @@ export type CreateTransactionBatchMutationBody =
   BodyType<CreateTransactionBatchBody>;
 export type CreateTransactionBatchMutationError = ErrorType<unknown>;
 
-/**
- * @summary Record multiple product sale transactions at once (cart checkout)
- */
 export const useCreateTransactionBatch = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -2122,9 +2515,6 @@ export const useDeleteExpense = <
   return useMutation(getDeleteExpenseMutationOptions(options));
 };
 
-/**
- * @summary Get shop settings
- */
 export const getGetSettingsUrl = () => {
   return `/api/settings`;
 };
@@ -2172,10 +2562,6 @@ export type GetSettingsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getSettings>>
 >;
 export type GetSettingsQueryError = ErrorType<unknown>;
-
-/**
- * @summary Get shop settings
- */
 
 export function useGetSettings<
   TData = Awaited<ReturnType<typeof getSettings>>,

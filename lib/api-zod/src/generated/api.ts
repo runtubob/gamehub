@@ -7,16 +7,10 @@
  */
 import * as zod from "zod";
 
-/**
- * @summary Health check
- */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
 
-/**
- * @summary List all PlayStation units
- */
 export const ListUnitsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
@@ -26,9 +20,6 @@ export const ListUnitsResponseItem = zod.object({
 });
 export const ListUnitsResponse = zod.array(ListUnitsResponseItem);
 
-/**
- * @summary Add a new PlayStation unit
- */
 export const CreateUnitBody = zod.object({
   name: zod.string(),
   hourlyRate: zod.number(),
@@ -73,21 +64,60 @@ export const DeleteUnitResponse = zod.object({
   message: zod.string(),
 });
 
+export const ListProductCategoriesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListProductCategoriesResponse = zod.array(
+  ListProductCategoriesResponseItem,
+);
+
+export const CreateProductCategoryBody = zod.object({
+  name: zod.string(),
+});
+
+export const DeleteProductCategoryParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteProductCategoryResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+export const ListProductsQueryParams = zod.object({
+  categoryId: zod.coerce.number().optional(),
+});
+
 export const ListProductsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
+  categoryId: zod.number().nullish(),
+  categoryName: zod.string().nullish(),
   price: zod.number(),
   costPrice: zod.number(),
   stock: zod.number(),
+  unitLabel: zod.string(),
+  packSize: zod.number().nullish(),
+  packLabel: zod.string().nullish(),
+  packPrice: zod.number().nullish(),
+  packCostPrice: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListProductsResponse = zod.array(ListProductsResponseItem);
 
 export const CreateProductBody = zod.object({
   name: zod.string(),
+  categoryId: zod.number().nullish(),
   price: zod.number(),
   costPrice: zod.number().optional(),
   stock: zod.number(),
+  unitLabel: zod.string().optional(),
+  packSize: zod.number().nullish(),
+  packLabel: zod.string().nullish(),
+  packPrice: zod.number().nullish(),
+  packCostPrice: zod.number().nullish(),
 });
 
 export const GetProductParams = zod.object({
@@ -97,9 +127,16 @@ export const GetProductParams = zod.object({
 export const GetProductResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
+  categoryId: zod.number().nullish(),
+  categoryName: zod.string().nullish(),
   price: zod.number(),
   costPrice: zod.number(),
   stock: zod.number(),
+  unitLabel: zod.string(),
+  packSize: zod.number().nullish(),
+  packLabel: zod.string().nullish(),
+  packPrice: zod.number().nullish(),
+  packCostPrice: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -109,17 +146,30 @@ export const UpdateProductParams = zod.object({
 
 export const UpdateProductBody = zod.object({
   name: zod.string().optional(),
+  categoryId: zod.number().nullish(),
   price: zod.number().optional(),
   costPrice: zod.number().optional(),
   stock: zod.number().optional(),
+  unitLabel: zod.string().optional(),
+  packSize: zod.number().nullish(),
+  packLabel: zod.string().nullish(),
+  packPrice: zod.number().nullish(),
+  packCostPrice: zod.number().nullish(),
 });
 
 export const UpdateProductResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
+  categoryId: zod.number().nullish(),
+  categoryName: zod.string().nullish(),
   price: zod.number(),
   costPrice: zod.number(),
   stock: zod.number(),
+  unitLabel: zod.string(),
+  packSize: zod.number().nullish(),
+  packLabel: zod.string().nullish(),
+  packPrice: zod.number().nullish(),
+  packCostPrice: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -132,9 +182,33 @@ export const DeleteProductResponse = zod.object({
   message: zod.string(),
 });
 
-/**
- * @summary List all rental packages
- */
+export const listStockAdjustmentsQueryLimitDefault = 50;
+
+export const ListStockAdjustmentsQueryParams = zod.object({
+  productId: zod.coerce.number().optional(),
+  limit: zod.coerce.number().default(listStockAdjustmentsQueryLimitDefault),
+});
+
+export const ListStockAdjustmentsResponseItem = zod.object({
+  id: zod.number(),
+  productId: zod.number(),
+  productName: zod.string(),
+  type: zod.enum(["add", "reduce"]),
+  quantity: zod.number(),
+  reason: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListStockAdjustmentsResponse = zod.array(
+  ListStockAdjustmentsResponseItem,
+);
+
+export const CreateStockAdjustmentBody = zod.object({
+  productId: zod.number(),
+  type: zod.enum(["add", "reduce"]),
+  quantity: zod.number(),
+  reason: zod.string().nullish(),
+});
+
 export const ListRentalPackagesResponseItem = zod.object({
   id: zod.number(),
   label: zod.string(),
@@ -275,18 +349,17 @@ export const createTransactionBodyQuantityDefault = 1;
 export const CreateTransactionBody = zod.object({
   productId: zod.number(),
   quantity: zod.number().default(createTransactionBodyQuantityDefault),
+  isPack: zod.boolean().optional(),
   paymentMethod: zod.enum(["cash", "qris"]),
 });
 
-/**
- * @summary Record multiple product sale transactions at once (cart checkout)
- */
 export const CreateTransactionBatchBody = zod.object({
   paymentMethod: zod.enum(["cash", "qris"]),
   items: zod.array(
     zod.object({
       productId: zod.number(),
       quantity: zod.number(),
+      isPack: zod.boolean().optional(),
     }),
   ),
 });
@@ -340,9 +413,6 @@ export const DeleteExpenseResponse = zod.object({
   message: zod.string(),
 });
 
-/**
- * @summary Get shop settings
- */
 export const GetSettingsResponse = zod.object({
   id: zod.number(),
   shopName: zod.string(),

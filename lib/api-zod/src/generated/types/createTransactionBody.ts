@@ -10,5 +10,6 @@ import type { CreateTransactionBodyPaymentMethod } from "./createTransactionBody
 export interface CreateTransactionBody {
   productId: number;
   quantity?: number;
+  isPack?: boolean;
   paymentMethod: CreateTransactionBodyPaymentMethod;
 }

@@ -9,8 +9,15 @@
 export interface Product {
   id: number;
   name: string;
+  categoryId?: number | null;
+  categoryName?: string | null;
   price: number;
   costPrice: number;
   stock: number;
+  unitLabel: string;
+  packSize?: number | null;
+  packLabel?: string | null;
+  packPrice?: number | null;
+  packCostPrice?: number | null;
   createdAt: Date;
 }

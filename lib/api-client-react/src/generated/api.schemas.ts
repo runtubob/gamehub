@@ -43,27 +43,89 @@ export interface UpdateUnitBody {
   status?: UpdateUnitBodyStatus;
 }
 
+export interface ProductCategory {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
+export interface CreateProductCategoryBody {
+  name: string;
+}
+
 export interface Product {
   id: number;
   name: string;
+  categoryId?: number | null;
+  categoryName?: string | null;
   price: number;
   costPrice: number;
   stock: number;
+  unitLabel: string;
+  packSize?: number | null;
+  packLabel?: string | null;
+  packPrice?: number | null;
+  packCostPrice?: number | null;
   createdAt: string;
 }
 
 export interface CreateProductBody {
   name: string;
+  categoryId?: number | null;
   price: number;
   costPrice?: number;
   stock: number;
+  unitLabel?: string;
+  packSize?: number | null;
+  packLabel?: string | null;
+  packPrice?: number | null;
+  packCostPrice?: number | null;
 }
 
 export interface UpdateProductBody {
   name?: string;
+  categoryId?: number | null;
   price?: number;
   costPrice?: number;
   stock?: number;
+  unitLabel?: string;
+  packSize?: number | null;
+  packLabel?: string | null;
+  packPrice?: number | null;
+  packCostPrice?: number | null;
+}
+
+export type StockAdjustmentType =
+  (typeof StockAdjustmentType)[keyof typeof StockAdjustmentType];
+
+export const StockAdjustmentType = {
+  add: "add",
+  reduce: "reduce",
+} as const;
+
+export interface StockAdjustment {
+  id: number;
+  productId: number;
+  productName: string;
+  type: StockAdjustmentType;
+  quantity: number;
+  reason?: string | null;
+  createdAt: string;
+}
+
+export type CreateStockAdjustmentBodyType =
+  (typeof CreateStockAdjustmentBodyType)[keyof typeof CreateStockAdjustmentBodyType];
+
+export const CreateStockAdjustmentBodyType = {
+  add: "add",
+  reduce: "reduce",
+} as const;
+
+export interface CreateStockAdjustmentBody {
+  productId: number;
+  type: CreateStockAdjustmentBodyType;
+  quantity: number;
+  reason?: string | null;
 }
 
 export interface RentalPackage {
@@ -183,6 +245,7 @@ export const CreateTransactionBodyPaymentMethod = {
 export interface CreateTransactionBody {
   productId: number;
   quantity?: number;
+  isPack?: boolean;
   paymentMethod: CreateTransactionBodyPaymentMethod;
 }
 
@@ -197,6 +260,7 @@ export const CreateTransactionBatchBodyPaymentMethod = {
 export type CreateTransactionBatchBodyItemsItem = {
   productId: number;
   quantity: number;
+  isPack?: boolean;
 };
 
 export interface CreateTransactionBatchBody {
@@ -270,6 +334,15 @@ export interface DeleteResult {
   success: boolean;
   message: string;
 }
+
+export type ListProductsParams = {
+  categoryId?: number;
+};
+
+export type ListStockAdjustmentsParams = {
+  productId?: number;
+  limit?: number;
+};
 
 export type ListRentalsParams = {
   status?: ListRentalsStatus;

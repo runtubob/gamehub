@@ -5,3 +5,5 @@ export * from "./transactions";
 export * from "./rental-packages";
 export * from "./expenses";
 export * from "./shop-settings";
+export * from "./product-categories";
+export * from "./stock-adjustments";
