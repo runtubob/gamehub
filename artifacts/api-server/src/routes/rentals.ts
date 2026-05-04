@@ -16,7 +16,9 @@ router.get("/rentals/active", async (req, res) => {
       customerName: rental.customerName,
       packageLabel: rental.packageLabel ?? "",
       startTime: rental.startTime, endTime: rental.endTime ?? rental.startTime,
-      remainingSeconds, totalCost: rental.totalCost ?? 0,
+      remainingSeconds,
+      totalCost: rental.totalCost ?? 0,
+      pendingAmount: rental.pendingAmount ?? 0,
       paymentStatus: rental.paymentStatus,
     };
   });
@@ -56,14 +58,13 @@ router.post("/rentals", async (req, res) => {
 
   const startTime = new Date();
   const endTime = new Date(startTime.getTime() + pkg.durationMinutes * 60 * 1000);
-
   const isPaid = payNow === true && !!paymentMethod;
 
   const [rental] = await db.insert(rentalsTable).values({
     unitId, unitName: unit.name, customerName: "—",
     packageId: pkg.id, packageLabel: pkg.label,
     startTime, endTime, durationMinutes: pkg.durationMinutes,
-    totalCost: pkg.price, status: "active",
+    totalCost: pkg.price, pendingAmount: 0, status: "active",
     paymentStatus: isPaid ? "paid" : "unpaid",
     paymentMethod: isPaid ? paymentMethod : null,
   }).returning();
@@ -128,14 +129,27 @@ router.post("/rentals/:id/extend", async (req, res) => {
   const baseTime = currentEnd < now ? now : currentEnd;
   const newEndTime = new Date(baseTime.getTime() + pkg.durationMinutes * 60 * 1000);
   const newDuration = (rental.durationMinutes ?? 0) + pkg.durationMinutes;
-  const newCost = (rental.totalCost ?? 0) + pkg.price;
+  const newTotalCost = (rental.totalCost ?? 0) + pkg.price;
   const newLabel = rental.packageLabel ? `${rental.packageLabel} + ${pkg.label}` : pkg.label;
 
+  const isPaying = payNow === true && !!paymentMethod;
+
+  // If not paying now, accumulate into pendingAmount so it can be charged at checkout
+  const newPendingAmount = isPaying
+    ? (rental.pendingAmount ?? 0)
+    : (rental.pendingAmount ?? 0) + pkg.price;
+
   const [updated] = await db.update(rentalsTable)
-    .set({ endTime: newEndTime, durationMinutes: newDuration, totalCost: newCost, packageLabel: newLabel })
+    .set({
+      endTime: newEndTime,
+      durationMinutes: newDuration,
+      totalCost: newTotalCost,
+      pendingAmount: newPendingAmount,
+      packageLabel: newLabel,
+    })
     .where(eq(rentalsTable.id, id)).returning();
 
-  if (payNow && paymentMethod) {
+  if (isPaying) {
     await db.insert(transactionsTable).values({
       type: "rental",
       description: `Tambah Waktu ${rental.unitName} (+${pkg.label})`,
@@ -159,31 +173,53 @@ router.post("/rentals/:id/stop", async (req, res) => {
   if (rental.status !== "active") { res.status(400).json({ error: "Rental tidak aktif." }); return; }
 
   const wasUnpaid = rental.paymentStatus === "unpaid";
+  const pendingAmount = rental.pendingAmount ?? 0;
+  const hasPendingExtension = pendingAmount > 0;
 
-  if (wasUnpaid && !paymentMethod) {
-    res.status(400).json({ error: "paymentMethod wajib untuk rental yang belum dibayar." }); return;
+  // Need payment method if: base is unpaid OR there's a pending extension
+  if ((wasUnpaid || hasPendingExtension) && !paymentMethod) {
+    res.status(400).json({
+      error: "paymentMethod wajib.",
+      pendingAmount,
+      wasUnpaid,
+    });
+    return;
   }
 
   const now = new Date();
   const totalCost = rental.totalCost ?? 0;
   const durationMinutes = rental.durationMinutes ?? 0;
-
-  const finalPaymentMethod = wasUnpaid ? paymentMethod! : (rental.paymentMethod ?? "cash");
+  const finalPaymentMethod = paymentMethod ?? rental.paymentMethod ?? "cash";
 
   const [updated] = await db.update(rentalsTable)
     .set({
-      endTime: now, durationMinutes, totalCost, status: "completed",
-      paymentStatus: "paid", paymentMethod: finalPaymentMethod,
+      endTime: now, durationMinutes, totalCost, pendingAmount: 0,
+      status: "completed", paymentStatus: "paid",
+      paymentMethod: finalPaymentMethod,
     })
     .where(eq(rentalsTable.id, id)).returning();
 
   await db.update(unitsTable).set({ status: "available" }).where(eq(unitsTable.id, rental.unitId));
 
+  // Create transaction for base rental if it was unpaid
   if (wasUnpaid) {
+    const baseCost = totalCost - pendingAmount;
     await db.insert(transactionsTable).values({
       type: "rental",
       description: `Rental ${rental.unitName} (${rental.packageLabel ?? durationMinutes + " menit"})`,
-      amount: totalCost,
+      amount: baseCost > 0 ? baseCost : totalCost,
+      paymentMethod: finalPaymentMethod as "cash" | "qris",
+      rentalId: rental.id,
+      userName: req.user?.name ?? null,
+    });
+  }
+
+  // Create separate transaction for the unpaid extension
+  if (hasPendingExtension) {
+    await db.insert(transactionsTable).values({
+      type: "rental",
+      description: `Tambah Waktu ${rental.unitName} (tagihan tertunda)`,
+      amount: pendingAmount,
       paymentMethod: finalPaymentMethod as "cash" | "qris",
       rentalId: rental.id,
       userName: req.user?.name ?? null,

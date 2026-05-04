@@ -13,6 +13,7 @@ export const rentalsTable = pgTable("rentals", {
   endTime: timestamp("end_time"),
   durationMinutes: integer("duration_minutes"),
   totalCost: integer("total_cost"),
+  pendingAmount: integer("pending_amount").notNull().default(0),
   status: text("status").notNull().default("active"),
   paymentStatus: text("payment_status").notNull().default("unpaid"),
   paymentMethod: text("payment_method"),
