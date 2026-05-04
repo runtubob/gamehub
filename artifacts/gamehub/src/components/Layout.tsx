@@ -8,7 +8,6 @@ import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey } from "@work
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, isAdminOrAbove } from "@/context/AuthContext";
 
-const LOGO_KEY = "shopLogo";
 const ROLE_LABELS: Record<string, string> = {
   superadmin: "Super Admin",
   admin: "Admin",
@@ -32,7 +31,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState("");
   const [editTagline, setEditTagline] = useState("");
-  const [logo, setLogo] = useState<string | null>(null);
   const [previewLogo, setPreviewLogo] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -40,16 +38,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isAdmin = isAdminOrAbove(user?.role);
   const isSuperAdmin = user?.role === "superadmin";
 
-  useEffect(() => {
-    const stored = localStorage.getItem(LOGO_KEY);
-    if (stored) setLogo(stored);
-  }, []);
+  const currentLogo = settings?.logoUrl ?? null;
 
   const openEdit = () => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     setEditName(settings?.shopName ?? "GameHub");
     setEditTagline(settings?.tagline ?? "PS Rental Manager");
-    setPreviewLogo(logo);
+    setPreviewLogo(settings?.logoUrl ?? null);
     setShowEdit(true);
   };
 
@@ -62,14 +57,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const handleSave = () => {
-    if (previewLogo !== logo) {
-      if (previewLogo) localStorage.setItem(LOGO_KEY, previewLogo);
-      else localStorage.removeItem(LOGO_KEY);
-      setLogo(previewLogo);
-    }
     updateSettings.mutate(
-      { data: { shopName: editName.trim() || "GameHub", tagline: editTagline.trim() || "PS Rental Manager" } },
-      { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() }); setShowEdit(false); } }
+      { data: {
+        shopName: editName.trim() || "GameHub",
+        tagline: editTagline.trim() || "PS Rental Manager",
+        logoUrl: previewLogo,
+      }},
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
+          setShowEdit(false);
+        }
+      }
     );
   };
 
@@ -94,15 +93,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const SidebarContent = () => (
     <>
       <div className="px-4 py-4 border-b border-sidebar-border">
-        <div className={`flex items-center gap-2.5 ${isAdmin ? "group cursor-pointer" : ""}`} onClick={isAdmin ? openEdit : undefined}>
+        <div className={`flex items-center gap-2.5 ${isSuperAdmin ? "group cursor-pointer" : ""}`} onClick={isSuperAdmin ? openEdit : undefined}>
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden shrink-0">
-            {logo ? <img src={logo} alt="logo" className="w-full h-full object-cover" /> : <Gamepad2 size={18} className="text-primary-foreground" />}
+            {currentLogo
+              ? <img src={currentLogo} alt="logo" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              : <Gamepad2 size={18} className="text-primary-foreground" />}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm text-foreground truncate">{shopName}</p>
             <p className="text-xs text-muted-foreground truncate">{tagline}</p>
           </div>
-          {isAdmin && <Pencil size={12} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
+          {isSuperAdmin && <Pencil size={12} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
         </div>
       </div>
 
@@ -160,7 +161,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </button>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
-              {logo ? <img src={logo} alt="logo" className="w-full h-full object-cover" /> : <Gamepad2 size={14} className="text-primary-foreground" />}
+              {currentLogo
+                ? <img src={currentLogo} alt="logo" className="w-full h-full object-cover" />
+                : <Gamepad2 size={14} className="text-primary-foreground" />}
             </div>
             <span className="font-bold text-sm text-foreground">{shopName}</span>
           </div>
@@ -168,27 +171,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
 
-      {showEdit && (
+      {showEdit && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-foreground">Pengaturan Toko</h3>
+              <h3 className="font-bold text-foreground">Pengaturan Tampilan</h3>
               <button onClick={() => setShowEdit(false)} className="p-1 text-muted-foreground hover:text-foreground rounded"><X size={16} /></button>
             </div>
+            <p className="text-xs text-muted-foreground">Pengaturan ini akan tampil di halaman login dan sidebar aplikasi.</p>
             <div className="flex flex-col items-center gap-3">
-              <div className="w-20 h-20 rounded-xl bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-colors" onClick={() => fileRef.current?.click()}>
-                {previewLogo ? <img src={previewLogo} alt="logo" className="w-full h-full object-cover" /> : <Upload size={24} className="text-muted-foreground" />}
+              <div
+                className="w-20 h-20 rounded-xl bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-colors"
+                onClick={() => fileRef.current?.click()}>
+                {previewLogo
+                  ? <img src={previewLogo} alt="logo" className="w-full h-full object-cover" />
+                  : <Upload size={24} className="text-muted-foreground" />}
               </div>
               <div className="flex gap-3">
                 <button onClick={() => fileRef.current?.click()} className="text-xs text-primary hover:underline">Upload Logo</button>
-                {previewLogo && <button onClick={() => setPreviewLogo(null)} className="text-xs text-destructive hover:underline">Hapus</button>}
+                {previewLogo && <button onClick={() => setPreviewLogo(null)} className="text-xs text-destructive hover:underline">Hapus Logo</button>}
               </div>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
             </div>
-            <div><label className="text-xs text-muted-foreground mb-1 block">Nama Usaha</label><input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring" /></div>
-            <div><label className="text-xs text-muted-foreground mb-1 block">Tagline</label><input value={editTagline} onChange={(e) => setEditTagline(e.target.value)} className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring" /></div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Nama Usaha</label>
+              <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Tagline / Deskripsi Singkat</label>
+              <input value={editTagline} onChange={(e) => setEditTagline(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+            </div>
             <div className="flex gap-2">
-              <button onClick={handleSave} disabled={updateSettings.isPending} className="flex-1 flex items-center justify-center gap-2 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"><Check size={14} />{updateSettings.isPending ? "Menyimpan..." : "Simpan"}</button>
+              <button onClick={handleSave} disabled={updateSettings.isPending}
+                className="flex-1 flex items-center justify-center gap-2 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+                <Check size={14} />{updateSettings.isPending ? "Menyimpan..." : "Simpan"}
+              </button>
               <button onClick={() => setShowEdit(false)} className="flex-1 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
             </div>
           </div>

@@ -46,10 +46,15 @@ router.put("/users/:id", requireAuth, requireRole("superadmin", "admin", "owner"
   res.json({ id: user.id, username: user.username, name: user.name, role: user.role, active: user.active, createdAt: user.createdAt });
 });
 
-router.delete("/users/:id", requireAuth, requireRole("superadmin"), async (req, res) => {
+router.delete("/users/:id", requireAuth, requireRole("superadmin", "admin", "owner"), async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   if (id === req.user!.id) { res.status(400).json({ error: "Tidak bisa menghapus akun sendiri." }); return; }
+  const [targetUser] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id));
+  if (!targetUser) { res.status(404).json({ error: "User tidak ditemukan." }); return; }
+  if (targetUser.role === "superadmin" && req.user!.role !== "superadmin") {
+    res.status(403).json({ error: "Hanya Super Admin yang bisa menghapus akun Super Admin." }); return;
+  }
   await db.delete(usersTable).where(eq(usersTable.id, id));
   res.json({ success: true, message: "User dihapus." });
 });

@@ -152,23 +152,28 @@ router.post("/rentals/:id/extend", async (req, res) => {
 router.post("/rentals/:id/stop", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { paymentMethod } = req.body as { paymentMethod: string };
-  if (!paymentMethod) { res.status(400).json({ error: "paymentMethod wajib." }); return; }
+  const { paymentMethod } = req.body as { paymentMethod?: string };
 
   const [rental] = await db.select().from(rentalsTable).where(eq(rentalsTable.id, id));
   if (!rental) { res.status(404).json({ error: "Rental tidak ditemukan." }); return; }
   if (rental.status !== "active") { res.status(400).json({ error: "Rental tidak aktif." }); return; }
 
+  const wasUnpaid = rental.paymentStatus === "unpaid";
+
+  if (wasUnpaid && !paymentMethod) {
+    res.status(400).json({ error: "paymentMethod wajib untuk rental yang belum dibayar." }); return;
+  }
+
   const now = new Date();
   const totalCost = rental.totalCost ?? 0;
   const durationMinutes = rental.durationMinutes ?? 0;
 
-  const wasUnpaid = rental.paymentStatus === "unpaid";
+  const finalPaymentMethod = wasUnpaid ? paymentMethod! : (rental.paymentMethod ?? "cash");
 
   const [updated] = await db.update(rentalsTable)
     .set({
       endTime: now, durationMinutes, totalCost, status: "completed",
-      paymentStatus: "paid", paymentMethod,
+      paymentStatus: "paid", paymentMethod: finalPaymentMethod,
     })
     .where(eq(rentalsTable.id, id)).returning();
 
@@ -179,13 +184,18 @@ router.post("/rentals/:id/stop", async (req, res) => {
       type: "rental",
       description: `Rental ${rental.unitName} (${rental.packageLabel ?? durationMinutes + " menit"})`,
       amount: totalCost,
-      paymentMethod: paymentMethod as "cash" | "qris",
+      paymentMethod: finalPaymentMethod as "cash" | "qris",
       rentalId: rental.id,
       userName: req.user?.name ?? null,
     });
   }
 
   res.json(updated);
+});
+
+router.post("/rentals/reset-stats", async (req, res) => {
+  await db.delete(rentalsTable).where(eq(rentalsTable.status, "completed"));
+  res.json({ success: true, message: "Statistik rental berhasil direset." });
 });
 
 export default router;

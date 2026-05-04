@@ -6,7 +6,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import {
   UserCheck, LogIn, LogOut, Clock, CalendarDays, Users,
-  CheckCircle2, AlertCircle, Pencil, Plus, Trash2, X, Save
+  CheckCircle2, AlertCircle, Pencil, Plus, Trash2, X, Save, Settings, Calendar
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, isAdminOrAbove } from "@/context/AuthContext";
@@ -32,14 +32,30 @@ function calcDuration(checkIn: string | Date | null | undefined, checkOut: strin
   return `${h}j ${m}m`;
 }
 
-function getStatus(checkInTime: string | Date | null | undefined, lateHour = 9) {
+interface WorkShift {
+  name: string;
+  startTime: string;
+  endTime: string;
+}
+
+function getStatusFromSchedule(checkInTime: string | Date | null | undefined, workSchedule: WorkShift[] | null) {
   if (!checkInTime) return null;
-  const h = new Date(checkInTime).getHours();
-  return h >= lateHour ? "late" : "ontime";
+  if (!workSchedule || workSchedule.length === 0) {
+    const h = new Date(checkInTime).getHours();
+    return h >= 9 ? "late" : "ontime";
+  }
+  const checkInHour = new Date(checkInTime).getHours();
+  const checkInMin = new Date(checkInTime).getMinutes();
+  const checkInTotal = checkInHour * 60 + checkInMin;
+  const earliest = workSchedule.reduce((min, s) => {
+    const [h, m] = s.startTime.split(":").map(Number);
+    const total = h * 60 + m;
+    return total < min ? total : min;
+  }, 23 * 60 + 59);
+  return checkInTotal > earliest ? "late" : "ontime";
 }
 
 const todayStr = () => new Date().toISOString().split("T")[0];
-
 const inputClass = "w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 type EditModal = { id: number; userName: string; checkIn: string; checkOut: string; notes: string } | null;
@@ -50,12 +66,18 @@ export default function Attendance() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isAdmin = isAdminOrAbove(user?.role);
+  const isSuperAdmin = user?.role === "superadmin";
 
   const [date, setDate] = useState(todayStr());
   const [editModal, setEditModal] = useState<EditModal>(null);
   const [addModal, setAddModal] = useState<AddModal>(null);
   const [saving, setSaving] = useState(false);
   const [delConfirm, setDelConfirm] = useState<number | null>(null);
+
+  const [showScheduleManager, setShowScheduleManager] = useState(false);
+  const [workSchedule, setWorkSchedule] = useState<WorkShift[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [newShift, setNewShift] = useState<WorkShift>({ name: "Shift Pagi", startTime: "08:00", endTime: "16:00" });
 
   const { data: todayRecord, isLoading: todayLoading } = useGetTodayAttendance({
     query: { queryKey: getGetTodayAttendanceQueryKey(), refetchInterval: 30000 },
@@ -72,6 +94,17 @@ export default function Attendance() {
   useEffect(() => {
     const t = setInterval(() => setClock(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })), 1000);
     return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(data => {
+        if (data.workSchedule) {
+          try { setWorkSchedule(JSON.parse(data.workSchedule)); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const invalidate = () => {
@@ -112,9 +145,7 @@ export default function Attendance() {
       toast({ title: "Data absensi diperbarui" });
     } catch (e) {
       toast({ title: "Gagal", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleAdd = async () => {
@@ -142,9 +173,7 @@ export default function Attendance() {
       toast({ title: "Data absensi ditambahkan" });
     } catch (e) {
       toast({ title: "Gagal", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
@@ -162,32 +191,70 @@ export default function Attendance() {
     }
   };
 
+  const handleSaveSchedule = async () => {
+    setScheduleLoading(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` },
+        body: JSON.stringify({ workSchedule: JSON.stringify(workSchedule) }),
+      });
+      if (!res.ok) throw new Error("Gagal menyimpan jadwal");
+      toast({ title: "Jadwal kerja berhasil disimpan" });
+      setShowScheduleManager(false);
+    } catch (e) {
+      toast({ title: "Gagal", description: (e as Error).message, variant: "destructive" });
+    } finally { setScheduleLoading(false); }
+  };
+
   const hasCheckedIn = !!todayRecord?.checkInTime;
   const hasCheckedOut = !!todayRecord?.checkOutTime;
-  const myStatus = getStatus(todayRecord?.checkInTime);
+  const myStatus = getStatusFromSchedule(todayRecord?.checkInTime, workSchedule);
 
-  // Admin stats
   const totalRecords = allRecords?.length ?? 0;
-  const onTimeCount = allRecords?.filter(r => getStatus(r.checkInTime) === "ontime").length ?? 0;
-  const lateCount = allRecords?.filter(r => getStatus(r.checkInTime) === "late").length ?? 0;
+  const onTimeCount = allRecords?.filter(r => getStatusFromSchedule(r.checkInTime, workSchedule) === "ontime").length ?? 0;
+  const lateCount = allRecords?.filter(r => getStatusFromSchedule(r.checkInTime, workSchedule) === "late").length ?? 0;
   const notOutCount = allRecords?.filter(r => r.checkInTime && !r.checkOutTime).length ?? 0;
 
   return (
     <div className="p-4 md:p-6 space-y-5">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Absensi</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{fmtDate(todayStr())}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Absensi Karyawan</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{fmtDate(todayStr())}</p>
+        </div>
+        {isSuperAdmin && (
+          <button onClick={() => setShowScheduleManager(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-muted text-muted-foreground hover:text-foreground border border-border rounded-lg text-xs font-medium">
+            <Settings size={13} /> Jam Kerja
+          </button>
+        )}
       </div>
 
-      {/* My Attendance Card */}
+      {workSchedule.length > 0 && (
+        <div className="bg-card border border-card-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar size={14} className="text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Jadwal Kerja</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {workSchedule.map((s, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                <span className="text-xs font-semibold text-primary">{s.name}</span>
+                <span className="text-xs text-muted-foreground">{s.startTime} – {s.endTime}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="bg-card border border-card-border rounded-xl p-5 space-y-4">
-        {/* Clock */}
         <div className="text-center space-y-1">
           <div className="font-mono text-4xl font-bold text-primary tabular-nums">{clock}</div>
           <p className="text-xs text-muted-foreground">{fmtDate(todayStr())}</p>
         </div>
 
-        {/* Status badges */}
         {!todayLoading && hasCheckedIn && (
           <div className="flex items-center justify-center gap-2">
             <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${myStatus === "ontime" ? "bg-chart-3/15 text-chart-3" : "bg-orange-500/15 text-orange-400"}`}>
@@ -203,31 +270,35 @@ export default function Attendance() {
           </div>
         )}
 
-        {/* Check-in / Check-out times */}
         {todayLoading ? (
           <div className="h-20 bg-muted animate-pulse rounded-xl" />
         ) : (
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-muted/30 rounded-xl p-3 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1 text-xs text-muted-foreground">
-                <LogIn size={12} /> Check-in
+                <LogIn size={12} /> Jam Masuk
               </div>
               <p className={`font-mono text-xl font-bold ${hasCheckedIn ? "text-chart-3" : "text-muted-foreground"}`}>
                 {hasCheckedIn ? fmtTime(todayRecord.checkInTime) : "--:--"}
               </p>
+              {hasCheckedIn && workSchedule.length > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">Jadwal: {workSchedule[0]?.startTime}</p>
+              )}
             </div>
             <div className="bg-muted/30 rounded-xl p-3 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1 text-xs text-muted-foreground">
-                <LogOut size={12} /> Check-out
+                <LogOut size={12} /> Jam Pulang
               </div>
               <p className={`font-mono text-xl font-bold ${hasCheckedOut ? "text-destructive" : "text-muted-foreground"}`}>
                 {hasCheckedOut ? fmtTime(todayRecord.checkOutTime) : "--:--"}
               </p>
+              {workSchedule.length > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">Jadwal: {workSchedule[0]?.endTime}</p>
+              )}
             </div>
           </div>
         )}
 
-        {/* Action button */}
         {hasCheckedIn && hasCheckedOut ? (
           <div className="text-center py-2.5 bg-chart-3/10 rounded-xl border border-chart-3/20">
             <CheckCircle2 size={18} className="text-chart-3 mx-auto mb-1" />
@@ -249,14 +320,12 @@ export default function Attendance() {
         )}
       </div>
 
-      {/* Admin section */}
       {isAdmin && (
         <div className="space-y-3">
-          {/* Header + controls */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users size={15} className="text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Data Absensi Karyawan</h3>
+              <h3 className="font-semibold text-sm">Rekap Absensi Karyawan</h3>
             </div>
             <div className="flex items-center gap-2">
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
@@ -268,7 +337,6 @@ export default function Attendance() {
             </div>
           </div>
 
-          {/* Summary stats */}
           {totalRecords > 0 && (
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-card border border-card-border rounded-xl p-3 text-center">
@@ -290,7 +358,6 @@ export default function Attendance() {
             </div>
           )}
 
-          {/* Records table */}
           <div className="bg-card border border-card-border rounded-xl overflow-hidden">
             {listLoading ? (
               <div className="p-4 space-y-2">
@@ -305,55 +372,55 @@ export default function Attendance() {
               </div>
             ) : (
               <div className="divide-y divide-border">
+                <div className="grid grid-cols-12 px-4 py-2 bg-muted/20 border-b border-border text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  <div className="col-span-4">Karyawan</div>
+                  <div className="col-span-2 text-center">Status</div>
+                  <div className="col-span-2 text-center">Masuk</div>
+                  <div className="col-span-2 text-center">Pulang</div>
+                  <div className="col-span-1 text-center">Durasi</div>
+                  <div className="col-span-1 text-right">Aksi</div>
+                </div>
                 {allRecords.map((r) => {
-                  const status = getStatus(r.checkInTime);
+                  const status = getStatusFromSchedule(r.checkInTime, workSchedule);
                   const dur = calcDuration(r.checkInTime, r.checkOutTime);
                   return (
-                    <div key={r.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${status === "ontime" ? "bg-chart-3/20" : status === "late" ? "bg-orange-500/20" : "bg-muted/30"}`}>
-                          <UserCheck size={15} className={status === "ontime" ? "text-chart-3" : status === "late" ? "text-orange-400" : "text-muted-foreground"} />
+                    <div key={r.id} className="grid grid-cols-12 items-center px-4 py-3 hover:bg-muted/10 transition-colors">
+                      <div className="col-span-4 flex items-center gap-2 min-w-0">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${status === "ontime" ? "bg-chart-3/20" : status === "late" ? "bg-orange-500/20" : "bg-muted/30"}`}>
+                          <UserCheck size={13} className={status === "ontime" ? "text-chart-3" : status === "late" ? "text-orange-400" : "text-muted-foreground"} />
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-sm font-semibold text-foreground">{r.userName}</p>
-                            {status === "ontime" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-chart-3/15 text-chart-3 font-medium">Tepat Waktu</span>}
-                            {status === "late" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 font-medium">Terlambat</span>}
-                            {r.checkInTime && !r.checkOutTime && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">Masih Kerja</span>}
-                          </div>
-                          {r.notes && <p className="text-[10px] text-muted-foreground truncate max-w-[160px]">{r.notes}</p>}
+                          <p className="text-sm font-semibold text-foreground truncate">{r.userName}</p>
+                          {r.notes && <p className="text-[10px] text-muted-foreground truncate">{r.notes}</p>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 shrink-0">
-                        <div className="flex gap-3 text-right">
-                          <div>
-                            <p className="text-[10px] text-muted-foreground">Masuk</p>
-                            <p className={`text-sm font-mono font-bold ${r.checkInTime ? "text-chart-3" : "text-muted-foreground"}`}>{fmtTime(r.checkInTime)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground">Pulang</p>
-                            <p className={`text-sm font-mono font-bold ${r.checkOutTime ? "text-destructive" : "text-muted-foreground"}`}>{fmtTime(r.checkOutTime)}</p>
-                          </div>
-                          {dur && (
-                            <div>
-                              <p className="text-[10px] text-muted-foreground">Durasi</p>
-                              <p className="text-sm font-semibold text-foreground">{dur}</p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          <button onClick={() => setEditModal({
-                            id: r.id, userName: r.userName,
-                            checkIn: r.checkInTime ? fmtTime(r.checkInTime).replace(".", ":") : "",
-                            checkOut: r.checkOutTime ? fmtTime(r.checkOutTime).replace(".", ":") : "",
-                            notes: r.notes ?? "",
-                          })} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg">
-                            <Pencil size={12} />
-                          </button>
-                          <button onClick={() => setDelConfirm(r.id)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg">
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
+                      <div className="col-span-2 flex justify-center">
+                        {status === "ontime" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-chart-3/15 text-chart-3 font-medium">Tepat Waktu</span>}
+                        {status === "late" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 font-medium">Terlambat</span>}
+                        {r.checkInTime && !r.checkOutTime && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">Masih Kerja</span>}
+                        {!r.checkInTime && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">—</span>}
+                      </div>
+                      <div className="col-span-2 text-center">
+                        <p className={`text-sm font-mono font-bold ${r.checkInTime ? "text-chart-3" : "text-muted-foreground"}`}>{fmtTime(r.checkInTime)}</p>
+                      </div>
+                      <div className="col-span-2 text-center">
+                        <p className={`text-sm font-mono font-bold ${r.checkOutTime ? "text-destructive" : "text-muted-foreground"}`}>{fmtTime(r.checkOutTime)}</p>
+                      </div>
+                      <div className="col-span-1 text-center">
+                        <p className="text-xs font-semibold text-foreground">{dur ?? "—"}</p>
+                      </div>
+                      <div className="col-span-1 flex justify-end gap-1">
+                        <button onClick={() => setEditModal({
+                          id: r.id, userName: r.userName,
+                          checkIn: r.checkInTime ? fmtTime(r.checkInTime).replace(".", ":") : "",
+                          checkOut: r.checkOutTime ? fmtTime(r.checkOutTime).replace(".", ":") : "",
+                          notes: r.notes ?? "",
+                        })} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg">
+                          <Pencil size={11} />
+                        </button>
+                        <button onClick={() => setDelConfirm(r.id)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg">
+                          <Trash2 size={11} />
+                        </button>
                       </div>
                     </div>
                   );
@@ -364,7 +431,6 @@ export default function Attendance() {
         </div>
       )}
 
-      {/* Edit Modal */}
       {editModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
@@ -401,7 +467,6 @@ export default function Attendance() {
         </div>
       )}
 
-      {/* Add Modal */}
       {addModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
@@ -448,7 +513,7 @@ export default function Attendance() {
             <div className="flex gap-2">
               <button onClick={handleAdd} disabled={saving}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
-                <Plus size={14} /> {saving ? "Menyimpan..." : "Tambah"}
+                <Plus size={14} /> {saving ? "Menyimpan..." : "Tambahkan"}
               </button>
               <button onClick={() => setAddModal(null)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
             </div>
@@ -456,18 +521,81 @@ export default function Attendance() {
         </div>
       )}
 
-      {/* Delete Confirm */}
       {delConfirm !== null && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
-            <p className="font-bold text-foreground">Hapus data absensi ini?</p>
-            <p className="text-sm text-muted-foreground">Data ini tidak dapat dikembalikan.</p>
+          <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-xs space-y-4">
+            <h3 className="font-bold text-foreground">Hapus data ini?</h3>
+            <p className="text-sm text-muted-foreground">Data absensi akan dihapus permanen.</p>
             <div className="flex gap-2">
-              <button onClick={() => handleDelete(delConfirm)}
-                className="flex-1 py-2.5 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90">
-                Ya, Hapus
+              <button onClick={() => handleDelete(delConfirm)} className="flex-1 py-2.5 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90">Hapus</button>
+              <button onClick={() => setDelConfirm(null)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScheduleManager && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-md space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings size={16} className="text-primary" />
+                <h3 className="font-bold text-foreground">Manajemen Jam Kerja</h3>
+              </div>
+              <button onClick={() => setShowScheduleManager(false)} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-muted-foreground">Tentukan jadwal shift kerja karyawan. Jam masuk lebih awal dari waktu shift = tepat waktu, lebih lambat = terlambat.</p>
+
+            {workSchedule.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Shift Aktif</p>
+                {workSchedule.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl border border-border">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-foreground">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">{s.startTime} – {s.endTime}</p>
+                    </div>
+                    <button onClick={() => setWorkSchedule(workSchedule.filter((_, idx) => idx !== i))}
+                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border border-border rounded-xl p-4 space-y-3 bg-muted/10">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tambah Shift Baru</p>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Nama Shift</label>
+                <input value={newShift.name} onChange={(e) => setNewShift({ ...newShift, name: e.target.value })}
+                  placeholder="cth. Shift Pagi" className={inputClass} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Jam Masuk</label>
+                  <input type="time" value={newShift.startTime} onChange={(e) => setNewShift({ ...newShift, startTime: e.target.value })} className={inputClass} />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Jam Pulang</label>
+                  <input type="time" value={newShift.endTime} onChange={(e) => setNewShift({ ...newShift, endTime: e.target.value })} className={inputClass} />
+                </div>
+              </div>
+              <button onClick={() => {
+                if (!newShift.name.trim()) return;
+                setWorkSchedule([...workSchedule, { ...newShift }]);
+                setNewShift({ name: "Shift Malam", startTime: "16:00", endTime: "00:00" });
+              }} className="w-full flex items-center justify-center gap-2 py-2 bg-primary/15 text-primary border border-primary/30 rounded-lg text-sm font-medium hover:bg-primary/25">
+                <Plus size={14} /> Tambah Shift
               </button>
-              <button onClick={() => setDelConfirm(null)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={handleSaveSchedule} disabled={scheduleLoading}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+                <Save size={14} /> {scheduleLoading ? "Menyimpan..." : "Simpan Jadwal"}
+              </button>
+              <button onClick={() => setShowScheduleManager(false)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium">Batal</button>
             </div>
           </div>
         </div>

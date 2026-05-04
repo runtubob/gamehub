@@ -1,9 +1,13 @@
-import { useGetDashboard, useListRecentTransactions } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useGetDashboard, useListRecentTransactions, getGetDashboardQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import {
   BarChart3, Gamepad2, Package, Receipt, Monitor, Zap, TrendingUp, TrendingDown,
-  Banknote, CreditCard, Trophy, Star
+  Banknote, CreditCard, Trophy, Star, RotateCcw, AlertTriangle
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth, isAdminOrAbove } from "@/context/AuthContext";
 
 function formatRp(amount: number) { return "Rp " + amount.toLocaleString("id-ID"); }
 function formatDate(dateStr: string) {
@@ -16,9 +20,34 @@ function formatTime(dateStr: string | Date) {
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useGetDashboard();
   const { data: recent, isLoading: recentLoading } = useListRecentTransactions({ limit: 8 });
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showResetUnits, setShowResetUnits] = useState(false);
+  const [resettingUnits, setResettingUnits] = useState(false);
+
+  const canReset = isAdminOrAbove(user?.role);
 
   const netCash = (stats?.cashIncome ?? 0) - (stats?.cashExpenses ?? 0);
   const netQris = (stats?.qrisIncome ?? 0) - (stats?.qrisExpenses ?? 0);
+
+  const handleResetTopUnits = async () => {
+    setResettingUnits(true);
+    try {
+      const res = await fetch("/api/rentals/reset-stats", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` },
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Gagal"); }
+      queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() });
+      setShowResetUnits(false);
+      toast({ title: "Statistik unit berhasil direset", description: "Data sesi dan pendapatan unit telah dikosongkan." });
+    } catch (e) {
+      toast({ title: "Gagal", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setResettingUnits(false);
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-5">
@@ -82,9 +111,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top Sellers — Produk Terlaku & Unit Terfavorit */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Top Products */}
         <div className="bg-card border border-card-border rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <Trophy size={16} className="text-yellow-400" />
@@ -116,12 +143,17 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Top PS Units */}
         <div className="bg-card border border-card-border rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <Star size={16} className="text-primary" />
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Unit PS Terfavorit</h2>
-            <span className="text-xs text-muted-foreground ml-auto">berdasarkan sesi</span>
+            <span className="text-xs text-muted-foreground">berdasarkan sesi</span>
+            {canReset && (
+              <button onClick={() => setShowResetUnits(true)}
+                className="ml-auto flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
+                <RotateCcw size={11} /> Reset
+              </button>
+            )}
           </div>
           {statsLoading ? (
             <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-muted animate-pulse rounded-lg" />)}</div>
@@ -152,7 +184,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Recent Transactions */}
       <div className="bg-card border border-card-border rounded-xl p-5">
         <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">Transaksi Terbaru</h2>
         {recentLoading ? (
@@ -183,6 +214,30 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {showResetUnits && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-destructive/30 rounded-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-destructive/15 rounded-full flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} className="text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Reset Statistik Unit?</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Aksi ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">Semua data sesi rental yang sudah selesai akan dihapus, sehingga data Unit Terfavorit akan menjadi <span className="font-medium text-foreground">0 sesi dan Rp 0</span>.</p>
+            <div className="flex gap-2">
+              <button onClick={handleResetTopUnits} disabled={resettingUnits}
+                className="flex-1 py-2.5 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90 disabled:opacity-50">
+                {resettingUnits ? "Mereset..." : "Ya, Reset Sekarang"}
+              </button>
+              <button onClick={() => setShowResetUnits(false)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

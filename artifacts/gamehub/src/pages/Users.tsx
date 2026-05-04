@@ -3,7 +3,7 @@ import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser, getListUsers
 import { useQueryClient } from "@tanstack/react-query";
 import { Users, Plus, Trash2, Settings, Check, Eye, EyeOff, Shield, Crown, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, canDelete } from "@/context/AuthContext";
+import { useAuth, isAdminOrAbove } from "@/context/AuthContext";
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: "Super Admin",
@@ -22,7 +22,8 @@ const inputClass = "w-full px-3 py-2 text-sm bg-input border border-border round
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
-  const isSuperAdmin = canDelete(currentUser?.role);
+  const isSuperAdmin = currentUser?.role === "superadmin";
+  const isAdmin = isAdminOrAbove(currentUser?.role);
   const { data: users, isLoading } = useListUsers();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
@@ -78,6 +79,12 @@ export default function UsersPage() {
     );
   };
 
+  const canDeleteUser = (targetRole: string) => {
+    if (!isAdmin) return false;
+    if (targetRole === "superadmin" && !isSuperAdmin) return false;
+    return true;
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-5">
       <div className="flex items-center justify-between">
@@ -90,7 +97,6 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Role info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="border border-chart-1/30 bg-chart-1/5 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1.5"><Crown size={14} className="text-chart-1" /><span className="text-sm font-bold text-chart-1">Super Admin</span></div>
@@ -98,7 +104,7 @@ export default function UsersPage() {
         </div>
         <div className="border border-primary/30 bg-primary/5 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1.5"><Shield size={14} className="text-primary" /><span className="text-sm font-bold text-primary">Admin</span></div>
-          <p className="text-xs text-muted-foreground">Bisa input transaksi, billing, pengeluaran, paket rental, dan lihat laporan keuangan. Tidak bisa hapus data sensitif.</p>
+          <p className="text-xs text-muted-foreground">Bisa input transaksi, billing, pengeluaran, paket rental, laporan keuangan, dan kelola pengguna karyawan.</p>
         </div>
       </div>
 
@@ -214,7 +220,7 @@ export default function UsersPage() {
                     <div className="flex justify-end gap-1">
                       <button onClick={() => { setEditId(u.id); setEditForm({ name: u.name, role: u.role, password: "", active: u.active }); }}
                         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded"><Settings size={13} /></button>
-                      {u.id !== currentUser?.id && isSuperAdmin && (
+                      {u.id !== currentUser?.id && canDeleteUser(u.role) && (
                         <button onClick={() => setDeleteConfirm({ id: u.id, name: u.name })}
                           className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"><Trash2 size={13} /></button>
                       )}
@@ -227,7 +233,6 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Delete confirm modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">

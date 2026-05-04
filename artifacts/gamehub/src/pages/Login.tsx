@@ -8,19 +8,24 @@ const USER_KEY = "gamehub_user";
 
 type Mode = "checking" | "setup" | "login";
 
+interface AppSettings {
+  shopName: string;
+  tagline: string;
+  logoUrl?: string | null;
+}
+
 export default function Login() {
   const { login } = useAuth();
   const { toast } = useToast();
 
   const [mode, setMode] = useState<Mode>("checking");
+  const [appSettings, setAppSettings] = useState<AppSettings>({ shopName: "GameHub", tagline: "PS Rental Management System" });
 
-  // Login state
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Setup state
   const [setupName, setSetupName] = useState("");
   const [setupUsername, setSetupUsername] = useState("");
   const [setupPassword, setSetupPassword] = useState("");
@@ -28,12 +33,19 @@ export default function Login() {
   const [showSetupPass, setShowSetupPass] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/setup-status")
-      .then((r) => r.json())
-      .then((data: { needsSetup: boolean }) => {
-        setMode(data.needsSetup ? "setup" : "login");
-      })
-      .catch(() => setMode("login"));
+    Promise.all([
+      fetch("/api/auth/setup-status").then(r => r.json()).catch(() => ({ needsSetup: false })),
+      fetch("/api/settings").then(r => r.json()).catch(() => null),
+    ]).then(([setupData, settingsData]) => {
+      setMode((setupData as { needsSetup: boolean }).needsSetup ? "setup" : "login");
+      if (settingsData && settingsData.shopName) {
+        setAppSettings({
+          shopName: settingsData.shopName,
+          tagline: settingsData.tagline ?? "PS Rental Management System",
+          logoUrl: settingsData.logoUrl ?? null,
+        });
+      }
+    });
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -67,7 +79,6 @@ export default function Login() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Gagal membuat akun");
-      // Store session and reload — AuthContext picks it up
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       window.location.reload();
@@ -93,17 +104,21 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
-        {/* Logo */}
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto shadow-lg">
-            <Gamepad2 size={32} className="text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">GameHub</h1>
-          <p className="text-sm text-muted-foreground">PS Rental Management System</p>
+          {appSettings.logoUrl ? (
+            <div className="w-16 h-16 mx-auto rounded-2xl overflow-hidden shadow-lg bg-muted flex items-center justify-center">
+              <img src={appSettings.logoUrl} alt="Logo" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+              <Gamepad2 size={32} className="text-primary-foreground" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold text-foreground">{appSettings.shopName}</h1>
+          <p className="text-sm text-muted-foreground">{appSettings.tagline}</p>
         </div>
 
         {mode === "setup" ? (
-          /* ── SETUP MODE: Buat Akun Super Admin Pertama ── */
           <form onSubmit={handleSetup} className="bg-card border border-card-border rounded-2xl p-6 space-y-4 shadow-xl">
             <div className="text-center space-y-1.5 pb-1">
               <div className="flex items-center justify-center gap-2">
@@ -119,65 +134,31 @@ export default function Login() {
 
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground font-medium">Nama Lengkap</label>
-              <input
-                type="text"
-                value={setupName}
-                onChange={(e) => setSetupName(e.target.value)}
-                placeholder="cth. Budi Santoso"
-                autoFocus
-                className={inputClass}
-              />
+              <input type="text" value={setupName} onChange={(e) => setSetupName(e.target.value)} placeholder="cth. Budi Santoso" autoFocus className={inputClass} />
             </div>
-
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground font-medium">Username</label>
-              <input
-                type="text"
-                value={setupUsername}
-                onChange={(e) => setSetupUsername(e.target.value.toLowerCase().replace(/\s/g, ""))}
-                placeholder="cth. budi123"
-                autoComplete="username"
-                className={inputClass}
-              />
+              <input type="text" value={setupUsername} onChange={(e) => setSetupUsername(e.target.value.toLowerCase().replace(/\s/g, ""))} placeholder="cth. budi123" autoComplete="username" className={inputClass} />
             </div>
-
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground font-medium">Password <span className="text-muted-foreground/60">(min. 6 karakter)</span></label>
               <div className="relative">
-                <input
-                  type={showSetupPass ? "text" : "password"}
-                  value={setupPassword}
-                  onChange={(e) => setSetupPassword(e.target.value)}
-                  placeholder="Masukkan password"
-                  autoComplete="new-password"
-                  className={`${inputClass} pr-10`}
-                />
+                <input type={showSetupPass ? "text" : "password"} value={setupPassword} onChange={(e) => setSetupPassword(e.target.value)} placeholder="Masukkan password" autoComplete="new-password" className={`${inputClass} pr-10`} />
                 <button type="button" onClick={() => setShowSetupPass(!showSetupPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showSetupPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
-
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground font-medium">Konfirmasi Password</label>
-              <input
-                type="password"
-                value={setupPassConfirm}
-                onChange={(e) => setSetupPassConfirm(e.target.value)}
-                placeholder="Ulangi password"
-                autoComplete="new-password"
-                className={inputClass}
-              />
+              <input type="password" value={setupPassConfirm} onChange={(e) => setSetupPassConfirm(e.target.value)} placeholder="Ulangi password" autoComplete="new-password" className={inputClass} />
               {setupPassConfirm && setupPassword !== setupPassConfirm && (
                 <p className="text-xs text-destructive">Password tidak cocok</p>
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={loading || !setupName.trim() || !setupUsername.trim() || !setupPassword || setupPassword !== setupPassConfirm}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <button type="submit" disabled={loading || !setupName.trim() || !setupUsername.trim() || !setupPassword || setupPassword !== setupPassConfirm}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
               {loading ? "Membuat akun..." : "Buat Akun & Masuk"}
             </button>
@@ -188,52 +169,30 @@ export default function Login() {
             </div>
           </form>
         ) : (
-          /* ── LOGIN MODE: Normal ── */
           <form onSubmit={handleLogin} className="bg-card border border-card-border rounded-2xl p-6 space-y-4 shadow-xl">
             <h2 className="font-bold text-foreground text-center">Masuk ke Aplikasi</h2>
-
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground font-medium">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Masukkan username"
-                autoFocus
-                autoComplete="username"
-                className={inputClass}
-              />
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Masukkan username" autoFocus autoComplete="username" className={inputClass} />
             </div>
-
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground font-medium">Password</label>
               <div className="relative">
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Masukkan password"
-                  autoComplete="current-password"
-                  className={`${inputClass} pr-10`}
-                />
+                <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Masukkan password" autoComplete="current-password" className={`${inputClass} pr-10`} />
                 <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || !username.trim() || !password}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <button type="submit" disabled={loading || !username.trim() || !password}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
               {loading ? "Memproses..." : "Masuk"}
             </button>
           </form>
         )}
 
-        <p className="text-center text-xs text-muted-foreground">GameHub v2.0 &copy; 2026</p>
+        <p className="text-center text-xs text-muted-foreground">{appSettings.shopName} v2.0 &copy; 2026</p>
       </div>
     </div>
   );

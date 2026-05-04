@@ -4,7 +4,7 @@ import {
   getListActiveRentalsQueryKey, getListUnitsQueryKey, getGetDashboardQueryKey, getListTransactionsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Zap, Square, Clock, Gamepad2, CreditCard, Banknote, Plus, AlertCircle, CheckCircle } from "lucide-react";
+import { Zap, Square, Clock, Gamepad2, CreditCard, Banknote, Plus, AlertCircle, CheckCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function formatRp(n: number) { return "Rp " + n.toLocaleString("id-ID"); }
@@ -56,7 +56,9 @@ export default function ActiveRentals() {
   const [payMethod, setPayMethod] = useState<"cash" | "qris">("cash");
   const [extPkgId, setExtPkgId] = useState<number | null>(null);
   const [extPayNow, setExtPayNow] = useState(true);
-  const expiredShown = useRef<Set<number>>(new Set());
+
+  const expiredUnpaidShown = useRef<Set<number>>(new Set());
+  const expiredPaidAuto = useRef<Set<number>>(new Set());
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: getListActiveRentalsQueryKey() });
@@ -68,12 +70,26 @@ export default function ActiveRentals() {
   useEffect(() => {
     if (!activeRentals) return;
     for (const r of activeRentals) {
-      if (r.remainingSeconds === 0 && r.paymentStatus === "unpaid" && !expiredShown.current.has(r.id)) {
-        expiredShown.current.add(r.id);
+      if (r.remainingSeconds !== 0) continue;
+
+      if (r.paymentStatus === "unpaid" && !expiredUnpaidShown.current.has(r.id)) {
+        expiredUnpaidShown.current.add(r.id);
         setPayMethod("cash");
         setModal({ id: r.id, label: r.packageLabel, cost: r.totalCost, mode: "stop" });
       }
+
+      if (r.paymentStatus === "paid" && !expiredPaidAuto.current.has(r.id)) {
+        expiredPaidAuto.current.add(r.id);
+        stopRental.mutate({ id: r.id, data: {} }, {
+          onSuccess: () => {
+            invalidateAll();
+            toast({ title: "Sesi selesai", description: `${r.unitName} — unit kini tersedia kembali.` });
+          },
+          onError: () => {},
+        });
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRentals]);
 
   const handleConfirm = () => {
@@ -96,6 +112,13 @@ export default function ActiveRentals() {
         onError: (e: Error) => toast({ title: "Gagal", description: e.message, variant: "destructive" }),
       });
     }
+  };
+
+  const handleFinishPaid = (rentalId: number, unitName: string) => {
+    stopRental.mutate({ id: rentalId, data: {} }, {
+      onSuccess: () => { invalidateAll(); toast({ title: "Sesi selesai", description: `${unitName} — unit kini tersedia kembali.` }); },
+      onError: (e: Error) => toast({ title: "Gagal", description: e.message, variant: "destructive" }),
+    });
   };
 
   const isPending = stopRental.isPending || payRental.isPending || extendRental.isPending;
@@ -122,6 +145,7 @@ export default function ActiveRentals() {
           {activeRentals.map((rental) => {
             const isExpired = rental.remainingSeconds === 0;
             const isUnpaid = rental.paymentStatus === "unpaid";
+            const isPaid = rental.paymentStatus === "paid";
             return (
               <div key={rental.id} className={`bg-card border rounded-xl p-4 md:p-5 space-y-4 ${isExpired ? "border-destructive/60 bg-destructive/5" : isUnpaid ? "border-orange-500/40 bg-orange-500/5" : "border-yellow-500/40 bg-yellow-500/5"}`}>
                 <div className="space-y-1.5">
@@ -136,7 +160,7 @@ export default function ActiveRentals() {
                         <AlertCircle size={10} /> Belum Bayar
                       </span>
                     )}
-                    {!isUnpaid && (
+                    {isPaid && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-chart-3/15 text-chart-3 font-medium">
                         <CheckCircle size={10} /> Lunas
                       </span>
@@ -163,10 +187,18 @@ export default function ActiveRentals() {
                     className="flex items-center justify-center gap-1.5 px-3 py-2 bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-medium hover:bg-primary/30">
                     <Plus size={13} /> Tambah Waktu
                   </button>
-                  <button onClick={() => { setPayMethod("cash"); setModal({ id: rental.id, label: rental.packageLabel, cost: rental.totalCost, mode: "stop" }); }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${isExpired ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 animate-pulse" : "bg-destructive/80 text-destructive-foreground hover:bg-destructive"}`}>
-                    <Square size={13} /> Stop & Bayar
-                  </button>
+                  {isUnpaid && (
+                    <button onClick={() => { setPayMethod("cash"); setModal({ id: rental.id, label: rental.packageLabel, cost: rental.totalCost, mode: "stop" }); }}
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${isExpired ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 animate-pulse" : "bg-destructive/80 text-destructive-foreground hover:bg-destructive"}`}>
+                      <Square size={13} /> Stop & Bayar
+                    </button>
+                  )}
+                  {isPaid && (
+                    <button onClick={() => handleFinishPaid(rental.id, rental.unitName)} disabled={stopRental.isPending}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-chart-3/20 text-chart-3 border border-chart-3/30 rounded-lg text-xs font-medium hover:bg-chart-3/30 disabled:opacity-50">
+                      <CheckCircle2 size={13} /> Selesaikan
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -237,7 +269,7 @@ export default function ActiveRentals() {
             <div className="flex gap-2">
               <button onClick={handleConfirm} disabled={isPending || (modal.mode === "extend" && !extPkgId)}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 ${modal.mode === "extend" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}`}>
-                {isPending ? "Memproses..." : modal.mode === "extend" ? "Tambah Waktu" : modal.mode === "pay" ? "Konfirmasi Bayar" : "Selesaikan"}
+                {isPending ? "Memproses..." : modal.mode === "extend" ? "Tambah Waktu" : modal.mode === "pay" ? "Konfirmasi Bayar" : "Selesaikan & Bayar"}
               </button>
               <button onClick={() => setModal(null)} className="px-4 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
             </div>

@@ -25,6 +25,7 @@ router.use(authRouter);
 
 router.use((req: Request, res: Response, next: NextFunction) => {
   if (req.path === "/auth/login") return next();
+  if (req.method === "GET" && req.path === "/settings") return next();
   return requireAuth(req, res, next);
 });
 

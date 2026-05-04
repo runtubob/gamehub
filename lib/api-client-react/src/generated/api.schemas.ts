@@ -443,11 +443,15 @@ export interface ShopSettings {
   id: number;
   shopName: string;
   tagline: string;
+  logoUrl?: string | null;
+  workSchedule?: string | null;
 }
 
 export interface UpdateSettingsBody {
   shopName?: string;
   tagline?: string;
+  logoUrl?: string | null;
+  workSchedule?: string | null;
 }
 
 export interface TopProduct {

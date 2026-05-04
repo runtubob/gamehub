@@ -622,12 +622,16 @@ export const GetSettingsResponse = zod.object({
 export const UpdateSettingsBody = zod.object({
   shopName: zod.string().optional(),
   tagline: zod.string().optional(),
+  logoUrl: zod.string().nullable().optional(),
+  workSchedule: zod.string().nullable().optional(),
 });
 
 export const UpdateSettingsResponse = zod.object({
   id: zod.number(),
   shopName: zod.string(),
   tagline: zod.string(),
+  logoUrl: zod.string().nullable().optional(),
+  workSchedule: zod.string().nullable().optional(),
 });
 
 export const GetDashboardResponse = zod.object({
