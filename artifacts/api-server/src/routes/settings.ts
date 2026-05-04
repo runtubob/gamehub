@@ -22,8 +22,9 @@ router.get("/settings", async (req, res) => {
 });
 
 router.put("/settings", requireAuth, requireRole("superadmin"), async (req, res) => {
-  const { shopName, tagline, logoUrl, workSchedule } = req.body as {
+  const { shopName, tagline, logoUrl, workSchedule, initialCash, initialQris } = req.body as {
     shopName?: string; tagline?: string; logoUrl?: string | null; workSchedule?: string | null;
+    initialCash?: number; initialQris?: number;
   };
   await getOrCreateSettings();
   const updateData: Record<string, unknown> = {};
@@ -31,6 +32,8 @@ router.put("/settings", requireAuth, requireRole("superadmin"), async (req, res)
   if (tagline !== undefined) updateData.tagline = tagline;
   if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
   if (workSchedule !== undefined) updateData.workSchedule = workSchedule;
+  if (initialCash !== undefined) updateData.initialCash = initialCash;
+  if (initialQris !== undefined) updateData.initialQris = initialQris;
   const [updated] = await db.update(shopSettingsTable).set(updateData).where(eq(shopSettingsTable.id, 1)).returning();
   res.json(updated);
 });

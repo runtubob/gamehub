@@ -5,8 +5,17 @@ import { requireAuth, requireRole } from "../middleware/auth";
 
 const router = Router();
 
-function getDateRange(period: string): { start: Date; end: Date; groupBy: "hour" | "day" | "month" } {
+function getDateRange(period: string, customDate?: string): { start: Date; end: Date; groupBy: "hour" | "day" | "month" } {
   const now = new Date();
+
+  // Custom single date (for viewing a specific past day)
+  if (customDate) {
+    const d = new Date(customDate);
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    return { start, end, groupBy: "hour" };
+  }
+
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 
   switch (period) {
@@ -68,16 +77,17 @@ function buildPeriodLabels(start: Date, end: Date, groupBy: "hour" | "day" | "mo
   return labels;
 }
 
-router.get("/reports/financial", requireAuth, requireRole("admin", "owner"), async (req, res) => {
+// FIX: was requireRole("admin", "owner") — "owner" doesn't exist, superadmin was locked out
+router.get("/reports/financial", requireAuth, requireRole("admin", "superadmin"), async (req, res) => {
   const period = (req.query.period as string) || "monthly";
-  const { start, end, groupBy } = getDateRange(period);
+  const customDate = req.query.customDate as string | undefined;
+  const { start, end, groupBy } = getDateRange(period, customDate);
 
   const [transactions, expenses] = await Promise.all([
     db.select().from(transactionsTable).where(and(gte(transactionsTable.createdAt, start), lte(transactionsTable.createdAt, end))),
     db.select().from(expensesTable).where(and(gte(expensesTable.createdAt, start), lte(expensesTable.createdAt, end))),
   ]);
 
-  // Build period map
   const labels = buildPeriodLabels(start, end, groupBy);
   const periodMap = new Map<string, { income: number; rentalIncome: number; productIncome: number; cashIncome: number; qrisIncome: number; expenses: number; cashExpenses: number; qrisExpenses: number; profit: number }>();
   labels.forEach((l) => periodMap.set(l, { income: 0, rentalIncome: 0, productIncome: 0, cashIncome: 0, qrisIncome: 0, expenses: 0, cashExpenses: 0, qrisExpenses: 0, profit: 0 }));
@@ -102,13 +112,11 @@ router.get("/reports/financial", requireAuth, requireRole("admin", "owner"), asy
     periodMap.set(key, entry);
   }
 
-  // Finalize profit per period
   const periods = labels.map((label) => {
     const e = periodMap.get(label)!;
     return { label, ...e, profit: e.income - e.expenses };
   });
 
-  // Summary totals
   const totalIncome = transactions.reduce((s, t) => s + t.amount, 0);
   const rentalIncome = transactions.filter((t) => t.type === "rental").reduce((s, t) => s + t.amount, 0);
   const productIncome = transactions.filter((t) => t.type === "product").reduce((s, t) => s + t.amount, 0);

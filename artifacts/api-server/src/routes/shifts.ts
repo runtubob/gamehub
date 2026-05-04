@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, shiftsTable, transactionsTable, expensesTable } from "@workspace/db";
 import { eq, and, gte, lte, desc, sum } from "drizzle-orm";
 import { StartShiftBody, EndShiftBody } from "@workspace/api-zod";
+import { requireRole } from "../middleware/auth";
 
 const router = Router();
 
@@ -122,11 +123,23 @@ router.put("/shifts/:id/end", async (req, res) => {
   const qrisTransactions = Number(qrisRow?.total ?? 0);
   const cashExpenses = Number(cashExpRow?.total ?? 0);
   const totalIncome = cashTransactions + qrisTransactions;
-  // Kas seharusnya = kas awal + pemasukan cash - pengeluaran cash
   const expectedCash = existing.openingCash + cashTransactions - cashExpenses;
   const variance = parsed.data.closingCash - expectedCash;
 
   res.json({ shift, cashTransactions, qrisTransactions, cashExpenses, totalIncome, expectedCash, variance });
+});
+
+// Superadmin only: delete a shift record
+router.delete("/shifts/:id", requireRole("superadmin"), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [existing] = await db.select().from(shiftsTable).where(eq(shiftsTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Shift tidak ditemukan" }); return; }
+  if (existing.status === "open") {
+    res.status(400).json({ error: "Tidak bisa menghapus shift yang masih aktif." }); return;
+  }
+  await db.delete(shiftsTable).where(eq(shiftsTable.id, id));
+  res.json({ success: true });
 });
 
 export default router;

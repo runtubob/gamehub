@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useGetDashboard, useListRecentTransactions, getGetDashboardQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import {
   BarChart3, Gamepad2, Package, Receipt, Monitor, Zap, TrendingUp, TrendingDown,
-  Banknote, CreditCard, Trophy, Star, RotateCcw, AlertTriangle
+  Banknote, CreditCard, Trophy, Star, RotateCcw, AlertTriangle, Settings2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, isAdminOrAbove } from "@/context/AuthContext";
@@ -17,6 +17,17 @@ function formatTime(dateStr: string | Date) {
   return new Date(dateStr).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
+type ProductPeriod = "daily" | "weekly" | "monthly" | "yearly" | "all";
+const PRODUCT_PERIODS: { key: ProductPeriod; label: string }[] = [
+  { key: "daily", label: "Hari Ini" },
+  { key: "weekly", label: "Minggu Ini" },
+  { key: "monthly", label: "Bulan Ini" },
+  { key: "yearly", label: "Tahun Ini" },
+  { key: "all", label: "Semua" },
+];
+
+interface TopProduct { productId: number; productName: string; totalQty: number; totalRevenue: number; }
+
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useGetDashboard();
   const { data: recent, isLoading: recentLoading } = useListRecentTransactions({ limit: 8 });
@@ -25,11 +36,30 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const [showResetUnits, setShowResetUnits] = useState(false);
   const [resettingUnits, setResettingUnits] = useState(false);
+  const [productPeriod, setProductPeriod] = useState<ProductPeriod>("daily");
+  const [showKasAwal, setShowKasAwal] = useState(false);
+  const [editInitialCash, setEditInitialCash] = useState("");
+  const [editInitialQris, setEditInitialQris] = useState("");
+  const [savingKasAwal, setSavingKasAwal] = useState(false);
 
   const canReset = isAdminOrAbove(user?.role);
+  const isSuperAdmin = user?.role === "superadmin";
+
+  const { data: topProducts, isLoading: topProdLoading } = useQuery<TopProduct[]>({
+    queryKey: ["top-products", productPeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/dashboard/top-products?period=${productPeriod}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` },
+      });
+      return res.json();
+    },
+    staleTime: 30000,
+  });
 
   const netCash = (stats?.cashIncome ?? 0) - (stats?.cashExpenses ?? 0);
   const netQris = (stats?.qrisIncome ?? 0) - (stats?.qrisExpenses ?? 0);
+  const initialCash = (stats as { initialCash?: number })?.initialCash ?? 0;
+  const initialQris = (stats as { initialQris?: number })?.initialQris ?? 0;
 
   const handleResetTopUnits = async () => {
     setResettingUnits(true);
@@ -41,7 +71,7 @@ export default function Dashboard() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Gagal"); }
       queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() });
       setShowResetUnits(false);
-      toast({ title: "Statistik unit berhasil direset", description: "Data sesi dan pendapatan unit telah dikosongkan." });
+      toast({ title: "Statistik unit berhasil direset" });
     } catch (e) {
       toast({ title: "Gagal", description: (e as Error).message, variant: "destructive" });
     } finally {
@@ -49,11 +79,47 @@ export default function Dashboard() {
     }
   };
 
+  const openKasAwal = () => {
+    setEditInitialCash(String(initialCash));
+    setEditInitialQris(String(initialQris));
+    setShowKasAwal(true);
+  };
+
+  const saveKasAwal = async () => {
+    setSavingKasAwal(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` },
+        body: JSON.stringify({
+          initialCash: parseInt(editInitialCash) || 0,
+          initialQris: parseInt(editInitialQris) || 0,
+        }),
+      });
+      if (!res.ok) throw new Error("Gagal menyimpan");
+      queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() });
+      setShowKasAwal(false);
+      toast({ title: "Kas awal berhasil disimpan" });
+    } catch (e) {
+      toast({ title: "Gagal", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setSavingKasAwal(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-5">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Ringkasan operasional hari ini</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Ringkasan operasional hari ini</p>
+        </div>
+        {isSuperAdmin && (
+          <button onClick={openKasAwal}
+            className="flex items-center gap-1.5 px-3 py-2 bg-muted text-muted-foreground hover:text-foreground border border-border rounded-lg text-xs font-medium">
+            <Settings2 size={13} /> Kas Awal
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -63,16 +129,19 @@ export default function Dashboard() {
         <StatCard icon={<Receipt size={18} className="text-chart-4" />} label="Transaksi" value={statsLoading ? "..." : String(stats?.todayTransactions ?? 0)} accent="text-chart-4" />
       </div>
 
+      {/* Kas cards — includes modal awal if set */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card border border-card-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2"><Banknote size={16} className="text-chart-3" /><span className="text-xs text-muted-foreground">Kas Cash</span></div>
+          <div className="flex items-center gap-2 mb-2"><Banknote size={16} className="text-chart-3" /><span className="text-xs text-muted-foreground">Kas Cash Hari Ini</span></div>
           <p className={`text-xl font-bold ${netCash >= 0 ? "text-chart-3" : "text-destructive"}`}>{statsLoading ? "..." : formatRp(netCash)}</p>
           <p className="text-xs text-muted-foreground mt-1">Masuk {formatRp(stats?.cashIncome ?? 0)} · Keluar {formatRp(stats?.cashExpenses ?? 0)}</p>
+          {initialCash > 0 && <p className="text-xs text-primary mt-1">Modal awal: {formatRp(initialCash)}</p>}
         </div>
         <div className="bg-card border border-card-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2"><CreditCard size={16} className="text-primary" /><span className="text-xs text-muted-foreground">Kas QRIS</span></div>
+          <div className="flex items-center gap-2 mb-2"><CreditCard size={16} className="text-primary" /><span className="text-xs text-muted-foreground">Kas QRIS Hari Ini</span></div>
           <p className={`text-xl font-bold ${netQris >= 0 ? "text-primary" : "text-destructive"}`}>{statsLoading ? "..." : formatRp(netQris)}</p>
           <p className="text-xs text-muted-foreground mt-1">Masuk {formatRp(stats?.qrisIncome ?? 0)} · Keluar {formatRp(stats?.qrisExpenses ?? 0)}</p>
+          {initialQris > 0 && <p className="text-xs text-primary mt-1">Modal awal: {formatRp(initialQris)}</p>}
         </div>
         <StatCard icon={<Zap size={18} className="text-yellow-400" />} label="Rental Aktif" value={statsLoading ? "..." : String(stats?.activeRentals ?? 0)} accent="text-yellow-400" />
         <StatCard icon={<Monitor size={18} className="text-chart-3" />} label="Unit Tersedia" value={statsLoading ? "..." : `${stats?.availableUnits ?? 0} / ${stats?.totalUnits ?? 0}`} accent="text-chart-3" />
@@ -112,19 +181,27 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Top Products with period filter */}
         <div className="bg-card border border-card-border rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <Trophy size={16} className="text-yellow-400" />
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Produk Terlaku</h2>
-            <span className="text-xs text-muted-foreground ml-auto">untuk restok</span>
           </div>
-          {statsLoading ? (
+          <div className="flex gap-1 flex-wrap mb-3">
+            {PRODUCT_PERIODS.map(({ key, label }) => (
+              <button key={key} onClick={() => setProductPeriod(key)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${productPeriod === key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {topProdLoading ? (
             <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-muted animate-pulse rounded-lg" />)}</div>
-          ) : !stats?.topProducts?.length ? (
-            <p className="text-xs text-muted-foreground text-center py-4">Belum ada data penjualan produk</p>
+          ) : !topProducts?.length ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Belum ada penjualan produk di periode ini</p>
           ) : (
             <div className="space-y-2">
-              {stats.topProducts.map((p, i) => (
+              {topProducts.map((p, i) => (
                 <div key={p.productId} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0 ? "bg-yellow-500/20 text-yellow-400" : i === 1 ? "bg-gray-400/20 text-gray-400" : i === 2 ? "bg-orange-500/20 text-orange-400" : "bg-muted text-muted-foreground"}`}>
                     {i + 1}
@@ -143,6 +220,7 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Top Units */}
         <div className="bg-card border border-card-border rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <Star size={16} className="text-primary" />
@@ -215,6 +293,47 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Kas Awal Modal */}
+      {showKasAwal && isSuperAdmin && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
+            <h3 className="font-bold text-foreground">Pengaturan Kas Awal / Modal Usaha</h3>
+            <p className="text-xs text-muted-foreground">Masukkan saldo awal usaha sebelum menggunakan aplikasi ini. Nilai ini ditampilkan sebagai referensi modal awal di kartu kas.</p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Modal Awal Cash (Rp)</label>
+              <input
+                type="number"
+                value={editInitialCash}
+                onChange={(e) => setEditInitialCash(e.target.value)}
+                placeholder="0"
+                className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Modal Awal QRIS (Rp)</label>
+              <input
+                type="number"
+                value={editInitialQris}
+                onChange={(e) => setEditInitialQris(e.target.value)}
+                placeholder="0"
+                className="w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={saveKasAwal} disabled={savingKasAwal}
+                className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+                {savingKasAwal ? "Menyimpan..." : "Simpan Kas Awal"}
+              </button>
+              <button onClick={() => setShowKasAwal(false)}
+                className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Units Modal */}
       {showResetUnits && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-destructive/30 rounded-xl p-6 w-full max-w-sm space-y-4">
