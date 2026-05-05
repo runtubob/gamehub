@@ -47,18 +47,15 @@ router.get("/dashboard", async (req, res) => {
   const availableUnits = allUnits.filter((u) => u.status === "available").length;
   const [productCount] = await db.select({ count: sql<number>`count(*)` }).from(productsTable);
 
-  const [rentalProfitResult] = await db
-    .select({ total: sql<number>`coalesce(sum(${transactionsTable.amount}), 0)` })
-    .from(transactionsTable).where(and(todayRange, eq(transactionsTable.type, "rental")));
-
-  const [productProfitResult] = await db
+  // FIX: rentals now store costAmount properly — use amount - costAmount for profit (same as products)
+  const [todayProfitResult] = await db
     .select({
       profit: sql<number>`coalesce(sum(${transactionsTable.amount} - ${transactionsTable.costAmount}), 0)`,
     })
     .from(transactionsTable)
-    .where(and(todayRange, eq(transactionsTable.type, "product")));
+    .where(todayRange);
 
-  const todayProfit = Number(rentalProfitResult?.total ?? 0) + Number(productProfitResult?.profit ?? 0);
+  const todayProfit = Number(todayProfitResult?.profit ?? 0);
 
   const weeklyIncome = [];
   for (let i = 6; i >= 0; i--) {
@@ -145,28 +142,37 @@ router.get("/dashboard", async (req, res) => {
 // Separate endpoint for top products with period filter
 router.get("/dashboard/top-products", async (req, res) => {
   const period = (req.query.period as string) || "daily";
+  const dateParam = req.query.date as string | undefined;
   const now = new Date();
-  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
 
+  // Support a specific date param (for prev/next day navigation)
   let startDate: Date;
-  switch (period) {
-    case "weekly": {
-      startDate = new Date(todayStart); startDate.setDate(startDate.getDate() - 6);
-      break;
+  let endDate: Date;
+  if (dateParam) {
+    startDate = new Date(dateParam + "T00:00:00");
+    endDate = new Date(dateParam + "T23:59:59.999");
+  } else {
+    endDate = now;
+    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+    switch (period) {
+      case "weekly": {
+        startDate = new Date(todayStart); startDate.setDate(startDate.getDate() - 6);
+        break;
+      }
+      case "monthly": {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      }
+      case "yearly": {
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      }
+      case "all":
+        startDate = new Date(2000, 0, 1);
+        break;
+      default:
+        startDate = todayStart;
     }
-    case "monthly": {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      break;
-    }
-    case "yearly": {
-      startDate = new Date(now.getFullYear(), 0, 1);
-      break;
-    }
-    case "all":
-      startDate = new Date(2000, 0, 1);
-      break;
-    default:
-      startDate = todayStart;
   }
 
   const rawTopProducts = await db
@@ -180,7 +186,7 @@ router.get("/dashboard/top-products", async (req, res) => {
       eq(transactionsTable.type, "product"),
       sql`${transactionsTable.productId} is not null`,
       gte(transactionsTable.createdAt, startDate),
-      lte(transactionsTable.createdAt, now),
+      lte(transactionsTable.createdAt, endDate),
     ))
     .groupBy(transactionsTable.productId)
     .orderBy(desc(sql`coalesce(sum(${transactionsTable.quantity}), 0)`))

@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [showResetUnits, setShowResetUnits] = useState(false);
   const [resettingUnits, setResettingUnits] = useState(false);
   const [productPeriod, setProductPeriod] = useState<ProductPeriod>("daily");
+  const [productDateOffset, setProductDateOffset] = useState(0);
   const [showKasAwal, setShowKasAwal] = useState(false);
   const [editInitialCash, setEditInitialCash] = useState("");
   const [editInitialQris, setEditInitialQris] = useState("");
@@ -45,10 +46,27 @@ export default function Dashboard() {
   const canReset = isAdminOrAbove(user?.role);
   const isSuperAdmin = user?.role === "superadmin";
 
+  const productDate = (() => {
+    if (productPeriod !== "daily" || productDateOffset === 0) return undefined;
+    const d = new Date();
+    d.setDate(d.getDate() + productDateOffset);
+    return d.toISOString().split("T")[0];
+  })();
+  const productDateLabel = (() => {
+    if (productPeriod !== "daily") return null;
+    if (productDateOffset === 0) return "Hari Ini";
+    const d = new Date();
+    d.setDate(d.getDate() + productDateOffset);
+    return d.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" });
+  })();
+
   const { data: topProducts, isLoading: topProdLoading } = useQuery<TopProduct[]>({
-    queryKey: ["top-products", productPeriod],
+    queryKey: ["top-products", productPeriod, productDate],
     queryFn: async () => {
-      const res = await fetch(`/api/dashboard/top-products?period=${productPeriod}`, {
+      const url = productDate
+        ? `/api/dashboard/top-products?period=${productPeriod}&date=${productDate}`
+        : `/api/dashboard/top-products?period=${productPeriod}`;
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` },
       });
       return res.json();
@@ -189,12 +207,23 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-1 flex-wrap mb-3">
             {PRODUCT_PERIODS.map(({ key, label }) => (
-              <button key={key} onClick={() => setProductPeriod(key)}
+              <button key={key} onClick={() => { setProductPeriod(key); setProductDateOffset(0); }}
                 className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${productPeriod === key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
                 {label}
               </button>
             ))}
           </div>
+          {productPeriod === "daily" && (
+            <div className="flex items-center gap-2 mb-3 bg-muted/20 rounded-lg px-2 py-1.5">
+              <button onClick={() => setProductDateOffset(o => o - 1)} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <span className="flex-1 text-center text-xs font-medium text-foreground">{productDateLabel}</span>
+              <button onClick={() => setProductDateOffset(o => o + 1)} disabled={productDateOffset >= 0} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors disabled:opacity-30">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+          )}
           {topProdLoading ? (
             <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-muted animate-pulse rounded-lg" />)}</div>
           ) : !topProducts?.length ? (

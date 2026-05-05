@@ -1,14 +1,27 @@
 import { Router } from "express";
-import { db, transactionsTable, expensesTable } from "@workspace/db";
-import { and, gte, lte } from "drizzle-orm";
+import { db, transactionsTable, expensesTable, shiftsTable } from "@workspace/db";
+import { and, gte, lte, eq, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middleware/auth";
 
 const router = Router();
 
-function getDateRange(period: string, customDate?: string): { start: Date; end: Date; groupBy: "hour" | "day" | "month" } {
+function getDateRange(
+  period: string,
+  opts?: { customDate?: string; startDate?: string; endDate?: string }
+): { start: Date; end: Date; groupBy: "hour" | "day" | "month" } {
   const now = new Date();
+  const { customDate, startDate, endDate } = opts ?? {};
 
-  // Custom single date (for viewing a specific past day)
+  // Custom date range (for period navigation — prev/next buttons)
+  if (startDate && endDate) {
+    const start = new Date(startDate + "T00:00:00");
+    const end = new Date(endDate + "T23:59:59.999");
+    const diffDays = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+    const groupBy: "hour" | "day" | "month" = diffDays <= 1 ? "hour" : diffDays <= 62 ? "day" : "month";
+    return { start, end, groupBy };
+  }
+
+  // Legacy: single custom date for daily period
   if (customDate) {
     const d = new Date(customDate);
     const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -77,11 +90,12 @@ function buildPeriodLabels(start: Date, end: Date, groupBy: "hour" | "day" | "mo
   return labels;
 }
 
-// FIX: was requireRole("admin", "owner") — "owner" doesn't exist, superadmin was locked out
 router.get("/reports/financial", requireAuth, requireRole("admin", "superadmin"), async (req, res) => {
   const period = (req.query.period as string) || "monthly";
   const customDate = req.query.customDate as string | undefined;
-  const { start, end, groupBy } = getDateRange(period, customDate);
+  const startDate = req.query.startDate as string | undefined;
+  const endDate = req.query.endDate as string | undefined;
+  const { start, end, groupBy } = getDateRange(period, { customDate, startDate, endDate });
 
   const [transactions, expenses] = await Promise.all([
     db.select().from(transactionsTable).where(and(gte(transactionsTable.createdAt, start), lte(transactionsTable.createdAt, end))),
@@ -138,6 +152,65 @@ router.get("/reports/financial", requireAuth, requireRole("admin", "superadmin")
     transactions: transactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     expenses: expenses.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   });
+});
+
+// Laporan per-karyawan
+router.get("/reports/employees", requireAuth, requireRole("admin", "superadmin"), async (req, res) => {
+  const startDate = req.query.startDate as string | undefined;
+  const endDate = req.query.endDate as string | undefined;
+  const now = new Date();
+  const start = startDate ? new Date(startDate + "T00:00:00") : new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = endDate ? new Date(endDate + "T23:59:59.999") : now;
+
+  const [txRows, shiftRows] = await Promise.all([
+    db.select({
+      userName: transactionsTable.userName,
+      totalTransactions: sql<number>`cast(count(*) as int)`,
+      totalRevenue: sql<number>`cast(coalesce(sum(${transactionsTable.amount}), 0) as int)`,
+      rentalRevenue: sql<number>`cast(coalesce(sum(case when ${transactionsTable.type} = 'rental' then ${transactionsTable.amount} else 0 end), 0) as int)`,
+      productRevenue: sql<number>`cast(coalesce(sum(case when ${transactionsTable.type} = 'product' then ${transactionsTable.amount} else 0 end), 0) as int)`,
+    })
+      .from(transactionsTable)
+      .where(and(gte(transactionsTable.createdAt, start), lte(transactionsTable.createdAt, end)))
+      .groupBy(transactionsTable.userName),
+
+    db.select({
+      userName: shiftsTable.userName,
+      totalShifts: sql<number>`cast(count(*) as int)`,
+      totalMinutes: sql<number>`cast(coalesce(sum(extract(epoch from (coalesce(${shiftsTable.endTime}, now()) - ${shiftsTable.startTime})) / 60), 0) as int)`,
+    })
+      .from(shiftsTable)
+      .where(and(
+        eq(shiftsTable.status, "closed"),
+        gte(shiftsTable.startTime, start),
+        lte(shiftsTable.startTime, end),
+      ))
+      .groupBy(shiftsTable.userName),
+  ]);
+
+  const allUsers = new Set<string>([
+    ...txRows.map((r) => r.userName ?? "(sistem)"),
+    ...shiftRows.map((r) => r.userName),
+  ]);
+
+  const result = Array.from(allUsers)
+    .filter(Boolean)
+    .map((name) => {
+      const tx = txRows.find((r) => (r.userName ?? "(sistem)") === name);
+      const sh = shiftRows.find((r) => r.userName === name);
+      return {
+        userName: name,
+        totalTransactions: Number(tx?.totalTransactions ?? 0),
+        totalRevenue: Number(tx?.totalRevenue ?? 0),
+        rentalRevenue: Number(tx?.rentalRevenue ?? 0),
+        productRevenue: Number(tx?.productRevenue ?? 0),
+        totalShifts: Number(sh?.totalShifts ?? 0),
+        totalHours: Math.floor(Number(sh?.totalMinutes ?? 0) / 60),
+      };
+    })
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+  res.json(result);
 });
 
 export default router;

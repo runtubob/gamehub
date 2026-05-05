@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 
 const router = Router();
 
-router.post("/admin/reset-balance", requireAuth, requireRole("admin", "owner"), async (req, res) => {
+router.post("/admin/reset-balance", requireAuth, requireRole("admin", "superadmin"), async (req, res) => {
   await db.delete(transactionsTable);
   await db.delete(expensesTable);
   await db.update(rentalsTable).set({ status: "completed" }).where(eq(rentalsTable.status, "active"));

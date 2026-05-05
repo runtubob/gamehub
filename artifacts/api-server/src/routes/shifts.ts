@@ -1,8 +1,7 @@
 import { Router } from "express";
 import { db, shiftsTable, transactionsTable, expensesTable } from "@workspace/db";
 import { eq, and, gte, lte, desc, sum } from "drizzle-orm";
-import { StartShiftBody, EndShiftBody } from "@workspace/api-zod";
-import { requireRole } from "../middleware/auth";
+import { requireAuth, requireRole } from "../middleware/auth";
 
 const router = Router();
 
@@ -30,6 +29,16 @@ router.get("/shifts/active", async (req, res) => {
   res.json(shift ?? null);
 });
 
+// Superadmin: get ALL open shifts (including from deleted users)
+router.get("/shifts/active-all", requireAuth, requireRole("superadmin"), async (req, res) => {
+  const shifts = await db
+    .select()
+    .from(shiftsTable)
+    .where(eq(shiftsTable.status, "open"))
+    .orderBy(desc(shiftsTable.startTime));
+  res.json(shifts);
+});
+
 router.get("/shifts/:id/transactions", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -48,11 +57,9 @@ router.get("/shifts/:id/transactions", async (req, res) => {
 });
 
 router.post("/shifts/start", async (req, res) => {
-  const parsed = StartShiftBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  // openingCash is no longer required — default to 0
+  const { openingCash = 0, notes } = req.body as { openingCash?: number; notes?: string };
+
   const existing = await db
     .select()
     .from(shiftsTable)
@@ -66,8 +73,8 @@ router.post("/shifts/start", async (req, res) => {
     userId: req.user!.id,
     userName: req.user!.name,
     role: req.user!.role,
-    openingCash: parsed.data.openingCash,
-    notes: parsed.data.notes ?? null,
+    openingCash: Number(openingCash) || 0,
+    notes: notes ?? null,
     status: "open",
   }).returning();
   res.status(201).json(shift);
@@ -77,11 +84,8 @@ router.put("/shifts/:id/end", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const parsed = EndShiftBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  // closingCash is no longer required — default to 0
+  const { closingCash = 0, notes } = req.body as { closingCash?: number; notes?: string };
 
   const [existing] = await db.select().from(shiftsTable).where(eq(shiftsTable.id, id));
   if (!existing) { res.status(404).json({ error: "Shift tidak ditemukan" }); return; }
@@ -90,53 +94,57 @@ router.put("/shifts/:id/end", async (req, res) => {
   const endTime = new Date();
   const [shift] = await db
     .update(shiftsTable)
-    .set({ endTime, closingCash: parsed.data.closingCash, notes: parsed.data.notes ?? existing.notes, status: "closed" })
+    .set({ endTime, closingCash: Number(closingCash) || 0, notes: notes ?? existing.notes, status: "closed" })
     .where(eq(shiftsTable.id, id))
     .returning();
 
   const [cashRow] = await db
     .select({ total: sum(transactionsTable.amount) })
     .from(transactionsTable)
-    .where(and(
-      eq(transactionsTable.paymentMethod, "cash"),
-      gte(transactionsTable.createdAt, existing.startTime),
-      lte(transactionsTable.createdAt, endTime),
-    ));
+    .where(and(eq(transactionsTable.paymentMethod, "cash"), gte(transactionsTable.createdAt, existing.startTime), lte(transactionsTable.createdAt, endTime)));
   const [qrisRow] = await db
     .select({ total: sum(transactionsTable.amount) })
     .from(transactionsTable)
-    .where(and(
-      eq(transactionsTable.paymentMethod, "qris"),
-      gte(transactionsTable.createdAt, existing.startTime),
-      lte(transactionsTable.createdAt, endTime),
-    ));
+    .where(and(eq(transactionsTable.paymentMethod, "qris"), gte(transactionsTable.createdAt, existing.startTime), lte(transactionsTable.createdAt, endTime)));
   const [cashExpRow] = await db
     .select({ total: sum(expensesTable.amount) })
     .from(expensesTable)
-    .where(and(
-      eq(expensesTable.paymentMethod, "cash"),
-      gte(expensesTable.createdAt, existing.startTime),
-      lte(expensesTable.createdAt, endTime),
-    ));
+    .where(and(eq(expensesTable.paymentMethod, "cash"), gte(expensesTable.createdAt, existing.startTime), lte(expensesTable.createdAt, endTime)));
 
   const cashTransactions = Number(cashRow?.total ?? 0);
   const qrisTransactions = Number(qrisRow?.total ?? 0);
   const cashExpenses = Number(cashExpRow?.total ?? 0);
   const totalIncome = cashTransactions + qrisTransactions;
-  const expectedCash = existing.openingCash + cashTransactions - cashExpenses;
-  const variance = parsed.data.closingCash - expectedCash;
 
-  res.json({ shift, cashTransactions, qrisTransactions, cashExpenses, totalIncome, expectedCash, variance });
+  res.json({ shift, cashTransactions, qrisTransactions, cashExpenses, totalIncome });
+});
+
+// Superadmin: force-close any open shift (for orphaned shifts from deleted accounts)
+router.put("/shifts/:id/force-end", requireAuth, requireRole("superadmin"), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [existing] = await db.select().from(shiftsTable).where(eq(shiftsTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Shift tidak ditemukan" }); return; }
+  if (existing.status === "closed") { res.status(400).json({ error: "Shift sudah ditutup" }); return; }
+
+  const [shift] = await db
+    .update(shiftsTable)
+    .set({ endTime: new Date(), closingCash: 0, notes: existing.notes ?? "Ditutup paksa oleh superadmin", status: "closed" })
+    .where(eq(shiftsTable.id, id))
+    .returning();
+
+  res.json(shift);
 });
 
 // Superadmin only: delete a shift record
-router.delete("/shifts/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/shifts/:id", requireAuth, requireRole("superadmin"), async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [existing] = await db.select().from(shiftsTable).where(eq(shiftsTable.id, id));
   if (!existing) { res.status(404).json({ error: "Shift tidak ditemukan" }); return; }
   if (existing.status === "open") {
-    res.status(400).json({ error: "Tidak bisa menghapus shift yang masih aktif." }); return;
+    res.status(400).json({ error: "Tidak bisa menghapus shift yang masih aktif. Gunakan force-end terlebih dahulu." }); return;
   }
   await db.delete(shiftsTable).where(eq(shiftsTable.id, id));
   res.json({ success: true });

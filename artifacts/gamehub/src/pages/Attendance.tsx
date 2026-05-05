@@ -32,27 +32,52 @@ function calcDuration(checkIn: string | Date | null | undefined, checkOut: strin
   return `${h}j ${m}m`;
 }
 
-interface WorkShift {
-  name: string;
-  startTime: string;
-  endTime: string;
+const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+const DAY_LABELS: Record<string, string> = { monday: "Senin", tuesday: "Selasa", wednesday: "Rabu", thursday: "Kamis", friday: "Jumat", saturday: "Sabtu", sunday: "Minggu" };
+
+interface DaySchedule { enabled: boolean; startTime: string; endTime: string; }
+type WeekSchedule = Record<string, DaySchedule>;
+
+const DEFAULT_WEEK_SCHEDULE: WeekSchedule = {
+  monday:    { enabled: true,  startTime: "08:00", endTime: "16:00" },
+  tuesday:   { enabled: true,  startTime: "08:00", endTime: "16:00" },
+  wednesday: { enabled: true,  startTime: "08:00", endTime: "16:00" },
+  thursday:  { enabled: true,  startTime: "08:00", endTime: "16:00" },
+  friday:    { enabled: true,  startTime: "08:00", endTime: "16:00" },
+  saturday:  { enabled: true,  startTime: "08:00", endTime: "16:00" },
+  sunday:    { enabled: false, startTime: "08:00", endTime: "16:00" },
+};
+
+function parseWeekSchedule(raw: unknown): WeekSchedule | null {
+  if (!raw) return null;
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (Array.isArray(parsed)) {
+      // Legacy array format → convert to week schedule using first entry's times
+      const first = parsed[0] ?? { startTime: "08:00", endTime: "16:00" };
+      const s = { ...DEFAULT_WEEK_SCHEDULE };
+      DAY_KEYS.forEach(k => { s[k] = { enabled: k !== "sunday", startTime: first.startTime, endTime: first.endTime }; });
+      return s;
+    }
+    if (parsed && typeof parsed === "object" && "monday" in parsed) return parsed as WeekSchedule;
+    return null;
+  } catch { return null; }
 }
 
-function getStatusFromSchedule(checkInTime: string | Date | null | undefined, workSchedule: WorkShift[] | null) {
+function getStatusFromSchedule(checkInTime: string | Date | null | undefined, weekSchedule: WeekSchedule | null) {
   if (!checkInTime) return null;
-  if (!workSchedule || workSchedule.length === 0) {
-    const h = new Date(checkInTime).getHours();
+  const date = new Date(checkInTime);
+  const dow = date.getDay(); // 0=Sun, 1=Mon, ...
+  const dayKey = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][dow];
+  const daySchedule = weekSchedule?.[dayKey];
+  if (!daySchedule?.enabled) {
+    const h = date.getHours();
     return h >= 9 ? "late" : "ontime";
   }
-  const checkInHour = new Date(checkInTime).getHours();
-  const checkInMin = new Date(checkInTime).getMinutes();
-  const checkInTotal = checkInHour * 60 + checkInMin;
-  const earliest = workSchedule.reduce((min, s) => {
-    const [h, m] = s.startTime.split(":").map(Number);
-    const total = h * 60 + m;
-    return total < min ? total : min;
-  }, 23 * 60 + 59);
-  return checkInTotal > earliest ? "late" : "ontime";
+  const [sh, sm] = daySchedule.startTime.split(":").map(Number);
+  const schedMinutes = sh * 60 + sm;
+  const checkInMinutes = date.getHours() * 60 + date.getMinutes();
+  return checkInMinutes > schedMinutes ? "late" : "ontime";
 }
 
 const todayStr = () => new Date().toISOString().split("T")[0];
@@ -75,9 +100,9 @@ export default function Attendance() {
   const [delConfirm, setDelConfirm] = useState<number | null>(null);
 
   const [showScheduleManager, setShowScheduleManager] = useState(false);
-  const [workSchedule, setWorkSchedule] = useState<WorkShift[]>([]);
+  const [workSchedule, setWorkSchedule] = useState<WeekSchedule | null>(null);
+  const [editSchedule, setEditSchedule] = useState<WeekSchedule>(DEFAULT_WEEK_SCHEDULE);
   const [scheduleLoading, setScheduleLoading] = useState(false);
-  const [newShift, setNewShift] = useState<WorkShift>({ name: "Shift Pagi", startTime: "08:00", endTime: "16:00" });
 
   const { data: todayRecord, isLoading: todayLoading } = useGetTodayAttendance({
     query: { queryKey: getGetTodayAttendanceQueryKey(), refetchInterval: 30000 },
@@ -100,9 +125,9 @@ export default function Attendance() {
     fetch("/api/settings")
       .then(r => r.json())
       .then(data => {
-        if (data.workSchedule) {
-          try { setWorkSchedule(JSON.parse(data.workSchedule)); } catch { /* ignore */ }
-        }
+        const parsed = parseWeekSchedule(data.workSchedule);
+        setWorkSchedule(parsed);
+        setEditSchedule(parsed ?? DEFAULT_WEEK_SCHEDULE);
       })
       .catch(() => {});
   }, []);
@@ -197,9 +222,10 @@ export default function Attendance() {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` },
-        body: JSON.stringify({ workSchedule: JSON.stringify(workSchedule) }),
+        body: JSON.stringify({ workSchedule: JSON.stringify(editSchedule) }),
       });
       if (!res.ok) throw new Error("Gagal menyimpan jadwal");
+      setWorkSchedule(editSchedule);
       toast({ title: "Jadwal kerja berhasil disimpan" });
       setShowScheduleManager(false);
     } catch (e) {
@@ -216,6 +242,9 @@ export default function Attendance() {
   const lateCount = allRecords?.filter(r => getStatusFromSchedule(r.checkInTime, workSchedule) === "late").length ?? 0;
   const notOutCount = allRecords?.filter(r => r.checkInTime && !r.checkOutTime).length ?? 0;
 
+  const todayDayKey = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date().getDay()];
+  const todaySchedule = workSchedule?.[todayDayKey];
+
   return (
     <div className="p-4 md:p-6 space-y-5">
       <div className="flex items-center justify-between">
@@ -231,20 +260,27 @@ export default function Attendance() {
         )}
       </div>
 
-      {workSchedule.length > 0 && (
+      {workSchedule && (
         <div className="bg-card border border-card-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Calendar size={14} className="text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Jadwal Kerja</h3>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {workSchedule.map((s, i) => (
-              <div key={i} className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                <span className="text-xs font-semibold text-primary">{s.name}</span>
-                <span className="text-xs text-muted-foreground">{s.startTime} – {s.endTime}</span>
-              </div>
-            ))}
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+            {DAY_KEYS.map((key) => {
+              const s = workSchedule[key];
+              const isToday = key === todayDayKey;
+              return (
+                <div key={key} className={`rounded-lg p-2 text-center ${s?.enabled ? (isToday ? "bg-primary/20 border border-primary/40" : "bg-primary/10 border border-primary/20") : "bg-muted/20 border border-border opacity-50"}`}>
+                  <p className={`text-[10px] font-bold mb-0.5 ${s?.enabled ? "text-primary" : "text-muted-foreground"}`}>{DAY_LABELS[key]?.slice(0, 3)}</p>
+                  {s?.enabled ? (
+                    <p className="text-[9px] text-muted-foreground leading-tight">{s.startTime}<br />{s.endTime}</p>
+                  ) : (
+                    <p className="text-[9px] text-muted-foreground">Libur</p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -281,8 +317,8 @@ export default function Attendance() {
               <p className={`font-mono text-xl font-bold ${hasCheckedIn ? "text-chart-3" : "text-muted-foreground"}`}>
                 {hasCheckedIn ? fmtTime(todayRecord.checkInTime) : "--:--"}
               </p>
-              {hasCheckedIn && workSchedule.length > 0 && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">Jadwal: {workSchedule[0]?.startTime}</p>
+              {hasCheckedIn && todaySchedule?.enabled && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">Jadwal: {todaySchedule.startTime}</p>
               )}
             </div>
             <div className="bg-muted/30 rounded-xl p-3 text-center">
@@ -292,8 +328,8 @@ export default function Attendance() {
               <p className={`font-mono text-xl font-bold ${hasCheckedOut ? "text-destructive" : "text-muted-foreground"}`}>
                 {hasCheckedOut ? fmtTime(todayRecord.checkOutTime) : "--:--"}
               </p>
-              {workSchedule.length > 0 && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">Jadwal: {workSchedule[0]?.endTime}</p>
+              {todaySchedule?.enabled && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">Jadwal: {todaySchedule.endTime}</p>
               )}
             </div>
           </div>
@@ -536,58 +572,46 @@ export default function Attendance() {
 
       {showScheduleManager && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-md space-y-5">
+          <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-lg space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Settings size={16} className="text-primary" />
-                <h3 className="font-bold text-foreground">Manajemen Jam Kerja</h3>
+                <h3 className="font-bold text-foreground">Jam Kerja Per Hari</h3>
               </div>
               <button onClick={() => setShowScheduleManager(false)} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
             </div>
-            <p className="text-xs text-muted-foreground">Tentukan jadwal shift kerja karyawan. Jam masuk lebih awal dari waktu shift = tepat waktu, lebih lambat = terlambat.</p>
+            <p className="text-xs text-muted-foreground">Atur jadwal kerja untuk setiap hari. Jam masuk lebih lambat dari jadwal = terlambat. Hari yang dinonaktifkan tidak dihitung keterlambatan.</p>
 
-            {workSchedule.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Shift Aktif</p>
-                {workSchedule.map((s, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl border border-border">
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">{s.name}</p>
-                      <p className="text-xs text-muted-foreground">{s.startTime} – {s.endTime}</p>
+            <div className="space-y-2">
+              {DAY_KEYS.map((key) => {
+                const s = editSchedule[key] ?? DEFAULT_WEEK_SCHEDULE[key];
+                return (
+                  <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${s.enabled ? "bg-muted/20 border-border" : "bg-muted/10 border-border opacity-60"}`}>
+                    <div className="w-16 shrink-0">
+                      <p className="text-xs font-semibold text-foreground">{DAY_LABELS[key]}</p>
                     </div>
-                    <button onClick={() => setWorkSchedule(workSchedule.filter((_, idx) => idx !== i))}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg">
-                      <Trash2 size={13} />
+                    <button
+                      onClick={() => setEditSchedule({ ...editSchedule, [key]: { ...s, enabled: !s.enabled } })}
+                      className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${s.enabled ? "bg-primary" : "bg-muted-foreground/30"}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${s.enabled ? "translate-x-4" : "translate-x-0"}`} />
                     </button>
+                    {s.enabled ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <input type="time" value={s.startTime}
+                          onChange={(e) => setEditSchedule({ ...editSchedule, [key]: { ...s, startTime: e.target.value } })}
+                          className="flex-1 px-2 py-1 text-xs bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <input type="time" value={s.endTime}
+                          onChange={(e) => setEditSchedule({ ...editSchedule, [key]: { ...s, endTime: e.target.value } })}
+                          className="flex-1 px-2 py-1 text-xs bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground flex-1">Hari Libur</span>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-
-            <div className="border border-border rounded-xl p-4 space-y-3 bg-muted/10">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tambah Shift Baru</p>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Nama Shift</label>
-                <input value={newShift.name} onChange={(e) => setNewShift({ ...newShift, name: e.target.value })}
-                  placeholder="cth. Shift Pagi" className={inputClass} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Jam Masuk</label>
-                  <input type="time" value={newShift.startTime} onChange={(e) => setNewShift({ ...newShift, startTime: e.target.value })} className={inputClass} />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Jam Pulang</label>
-                  <input type="time" value={newShift.endTime} onChange={(e) => setNewShift({ ...newShift, endTime: e.target.value })} className={inputClass} />
-                </div>
-              </div>
-              <button onClick={() => {
-                if (!newShift.name.trim()) return;
-                setWorkSchedule([...workSchedule, { ...newShift }]);
-                setNewShift({ name: "Shift Malam", startTime: "16:00", endTime: "00:00" });
-              }} className="w-full flex items-center justify-center gap-2 py-2 bg-primary/15 text-primary border border-primary/30 rounded-lg text-sm font-medium hover:bg-primary/25">
-                <Plus size={14} /> Tambah Shift
-              </button>
+                );
+              })}
             </div>
 
             <div className="flex gap-2">

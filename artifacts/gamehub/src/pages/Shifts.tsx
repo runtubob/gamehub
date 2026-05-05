@@ -5,8 +5,8 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Clock, Play, StopCircle, Wallet, TrendingUp, AlertCircle, CheckCircle2,
-  ChevronDown, ChevronUp, Banknote, CreditCard, ShoppingBag, Receipt, Trash2, AlertTriangle
+  Clock, Play, StopCircle, TrendingUp, CheckCircle2,
+  ChevronDown, ChevronUp, Banknote, CreditCard, ShoppingBag, Receipt, Trash2, AlertTriangle, AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -24,10 +24,7 @@ function formatDuration(start: string, end?: string | null) {
 }
 
 function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("id-ID", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+  return new Date(iso).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatTime(iso: string) {
@@ -58,37 +55,24 @@ function ShiftExpandedDetail({ shiftId }: { shiftId: number }) {
   const qrisTotal = transactions?.filter((t) => t.paymentMethod === "qris").reduce((s, t) => s + t.amount, 0) ?? 0;
   const totalDiscount = transactions?.reduce((s, t) => s + (t.discountAmount ?? 0), 0) ?? 0;
 
-  if (isLoading) return (
-    <div className="col-span-2 md:col-span-4 h-8 bg-muted/20 rounded animate-pulse" />
-  );
+  if (isLoading) return <div className="col-span-2 md:col-span-4 h-8 bg-muted/20 rounded animate-pulse" />;
   if (!transactions?.length) return (
-    <div className="col-span-2 md:col-span-4 text-center py-3 text-sm text-muted-foreground">
-      Belum ada transaksi di shift ini
-    </div>
+    <div className="col-span-2 md:col-span-4 text-center py-3 text-sm text-muted-foreground">Belum ada transaksi di shift ini</div>
   );
 
   return (
     <div className="col-span-2 md:col-span-4 space-y-3 pt-1">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div className="bg-chart-3/10 border border-chart-3/20 rounded-lg p-3">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Banknote size={11} className="text-chart-3" />
-            <p className="text-xs text-muted-foreground">Cash</p>
-          </div>
+          <div className="flex items-center gap-1.5 mb-0.5"><Banknote size={11} className="text-chart-3" /><p className="text-xs text-muted-foreground">Cash</p></div>
           <p className="font-semibold text-sm text-chart-3">{formatRp(cashTotal)}</p>
         </div>
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <CreditCard size={11} className="text-primary" />
-            <p className="text-xs text-muted-foreground">QRIS</p>
-          </div>
+          <div className="flex items-center gap-1.5 mb-0.5"><CreditCard size={11} className="text-primary" /><p className="text-xs text-muted-foreground">QRIS</p></div>
           <p className="font-semibold text-sm text-primary">{formatRp(qrisTotal)}</p>
         </div>
         <div className="bg-muted/20 rounded-lg p-3">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <ShoppingBag size={11} className="text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">Transaksi</p>
-          </div>
+          <div className="flex items-center gap-1.5 mb-0.5"><ShoppingBag size={11} className="text-muted-foreground" /><p className="text-xs text-muted-foreground">Transaksi</p></div>
           <p className="font-semibold text-sm text-foreground">{transactions.length} item</p>
         </div>
         {totalDiscount > 0 && (
@@ -108,9 +92,7 @@ function ShiftExpandedDetail({ shiftId }: { shiftId: number }) {
           {transactions.map((tx) => (
             <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 hover:bg-muted/10 transition-colors">
               <div className="flex items-center gap-2 min-w-0">
-                {tx.paymentMethod === "cash"
-                  ? <Banknote size={13} className="text-chart-3 shrink-0" />
-                  : <CreditCard size={13} className="text-primary shrink-0" />}
+                {tx.paymentMethod === "cash" ? <Banknote size={13} className="text-chart-3 shrink-0" /> : <CreditCard size={13} className="text-primary shrink-0" />}
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-foreground truncate">{tx.description}</p>
                   <p className="text-[10px] text-muted-foreground">{formatTime(tx.createdAt)}</p>
@@ -118,9 +100,7 @@ function ShiftExpandedDetail({ shiftId }: { shiftId: number }) {
               </div>
               <div className="text-right shrink-0 ml-3">
                 <p className="text-xs font-semibold text-foreground">{formatRp(tx.amount)}</p>
-                {tx.discountAmount > 0 && (
-                  <p className="text-[10px] text-destructive">-{formatRp(tx.discountAmount)} diskon</p>
-                )}
+                {tx.discountAmount > 0 && <p className="text-[10px] text-destructive">-{formatRp(tx.discountAmount)} diskon</p>}
               </div>
             </div>
           ))}
@@ -128,6 +108,11 @@ function ShiftExpandedDetail({ shiftId }: { shiftId: number }) {
       </div>
     </div>
   );
+}
+
+interface OrphanShift {
+  id: number; userId: number; userName: string; role: string;
+  startTime: string; status: string; notes?: string | null;
 }
 
 export default function Shifts() {
@@ -140,41 +125,43 @@ export default function Shifts() {
   const { user } = useAuth();
 
   const isSuperAdmin = user?.role === "superadmin";
-  const lastClosedShift = allShifts?.find((s) => s.status === "closed");
 
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
-  const [openingCash, setOpeningCash] = useState("");
-  const [closingCash, setClosingCash] = useState("");
   const [notes, setNotes] = useState("");
-  const [summary, setSummary] = useState<null | {
-    shift: NonNullable<typeof activeShift>;
-    cashTransactions: number;
-    qrisTransactions: number;
-    cashExpenses: number;
-    totalIncome: number;
-    expectedCash: number;
-    variance: number;
-  }>(null);
+  const [summary, setSummary] = useState<null | { totalIncome: number; cashTransactions: number; qrisTransactions: number; cashExpenses: number }>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [orphanShifts, setOrphanShifts] = useState<OrphanShift[]>([]);
+  const [forceEndId, setForceEndId] = useState<number | null>(null);
+  const [forcingEnd, setForcingEnd] = useState(false);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getGetActiveShiftQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListShiftsQueryKey({}) });
   };
 
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    fetch("/api/shifts/active-all", { headers: { Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` } })
+      .then(r => r.json())
+      .then(data => {
+        const myId = user?.id;
+        const orphans = (data as OrphanShift[]).filter(s => s.userId !== myId);
+        setOrphanShifts(orphans);
+      })
+      .catch(() => {});
+  }, [isSuperAdmin, user?.id, allShifts]);
+
   const handleStart = () => {
-    const amount = parseInt(openingCash.replace(/\D/g, ""));
-    if (isNaN(amount)) { toast({ title: "Masukkan jumlah uang kas awal", variant: "destructive" }); return; }
     startShift.mutate(
-      { data: { openingCash: amount, notes: notes.trim() || undefined } },
+      { data: { openingCash: 0, notes: notes.trim() || undefined } },
       {
         onSuccess: () => {
           invalidate();
           setShowStart(false);
-          setOpeningCash(""); setNotes("");
+          setNotes("");
           toast({ title: "Shift dimulai!" });
         },
         onError: (e: Error) => toast({ title: "Gagal memulai shift", description: e.message, variant: "destructive" }),
@@ -184,16 +171,15 @@ export default function Shifts() {
 
   const handleEnd = () => {
     if (!activeShift) return;
-    const amount = parseInt(closingCash.replace(/\D/g, ""));
-    if (isNaN(amount)) { toast({ title: "Masukkan jumlah uang kas akhir", variant: "destructive" }); return; }
     endShift.mutate(
-      { id: activeShift.id, data: { closingCash: amount, notes: notes.trim() || undefined } },
+      { id: activeShift.id, data: { closingCash: 0, notes: notes.trim() || undefined } },
       {
         onSuccess: (data) => {
           invalidate();
           setShowEnd(false);
-          setClosingCash(""); setNotes("");
-          setSummary(data as typeof summary);
+          setNotes("");
+          const d = data as { totalIncome: number; cashTransactions: number; qrisTransactions: number; cashExpenses: number };
+          setSummary({ totalIncome: d.totalIncome, cashTransactions: d.cashTransactions, qrisTransactions: d.qrisTransactions, cashExpenses: d.cashExpenses });
         },
         onError: (e: Error) => toast({ title: "Gagal menutup shift", description: e.message, variant: "destructive" }),
       }
@@ -203,19 +189,28 @@ export default function Shifts() {
   const handleDeleteShift = async (id: number) => {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/shifts/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` },
-      });
+      const res = await fetch(`/api/shifts/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` } });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Gagal menghapus"); }
       invalidate();
       setDeleteConfirm(null);
       toast({ title: "Riwayat shift dihapus" });
     } catch (e) {
       toast({ title: "Gagal", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setDeleting(false);
-    }
+    } finally { setDeleting(false); }
+  };
+
+  const handleForceEnd = async (id: number) => {
+    setForcingEnd(true);
+    try {
+      const res = await fetch(`/api/shifts/${id}/force-end`, { method: "PUT", headers: { Authorization: `Bearer ${localStorage.getItem("gamehub_token")}` } });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Gagal"); }
+      invalidate();
+      setForceEndId(null);
+      setOrphanShifts(prev => prev.filter(s => s.id !== id));
+      toast({ title: "Shift berhasil ditutup paksa" });
+    } catch (e) {
+      toast({ title: "Gagal", description: (e as Error).message, variant: "destructive" });
+    } finally { setForcingEnd(false); }
   };
 
   const inputClass = "w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
@@ -223,8 +218,8 @@ export default function Shifts() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Shift & Handover</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Kelola shift kerja dan rekonsiliasi kas</p>
+        <h1 className="text-xl md:text-2xl font-bold text-foreground">Shift Kerja</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Kelola waktu kerja dan pantau transaksi per shift</p>
       </div>
 
       {/* Summary Modal */}
@@ -232,38 +227,32 @@ export default function Shifts() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-md space-y-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                <CheckCircle2 size={22} className="text-green-400" />
-              </div>
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center"><CheckCircle2 size={22} className="text-green-400" /></div>
               <div>
                 <h3 className="font-bold text-foreground text-lg">Shift Selesai</h3>
-                <p className="text-xs text-muted-foreground">
-                  {formatTime(summary.shift.startTime)} – {formatTime(summary.shift.endTime!)} · {formatDuration(summary.shift.startTime, summary.shift.endTime)}
-                </p>
+                <p className="text-xs text-muted-foreground">Ringkasan transaksi shift ini</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-muted/30 rounded-lg p-3"><p className="text-xs text-muted-foreground">Total Pendapatan</p><p className="font-bold text-foreground mt-0.5">{formatRp(summary.totalIncome)}</p></div>
-              <div className="bg-muted/30 rounded-lg p-3"><p className="text-xs text-muted-foreground">Pendapatan Tunai</p><p className="font-bold text-foreground mt-0.5">{formatRp(summary.cashTransactions)}</p></div>
-              <div className="bg-muted/30 rounded-lg p-3"><p className="text-xs text-muted-foreground">Kas Awal</p><p className="font-bold text-foreground mt-0.5">{formatRp(summary.shift.openingCash)}</p></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-muted/30 rounded-lg p-3 col-span-2">
+                <p className="text-xs text-muted-foreground">Total Pendapatan Shift</p>
+                <p className="font-bold text-xl text-chart-3 mt-0.5">{formatRp(summary.totalIncome)}</p>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-3">
+                <div className="flex items-center gap-1.5 mb-1"><Banknote size={11} className="text-chart-3" /><p className="text-xs text-muted-foreground">Pendapatan Cash</p></div>
+                <p className="font-semibold text-sm text-foreground">{formatRp(summary.cashTransactions)}</p>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-3">
+                <div className="flex items-center gap-1.5 mb-1"><CreditCard size={11} className="text-primary" /><p className="text-xs text-muted-foreground">Pendapatan QRIS</p></div>
+                <p className="font-semibold text-sm text-foreground">{formatRp(summary.qrisTransactions)}</p>
+              </div>
               {summary.cashExpenses > 0 && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3"><p className="text-xs text-muted-foreground">Pengeluaran Cash</p><p className="font-bold text-destructive mt-0.5">−{formatRp(summary.cashExpenses)}</p></div>
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Pengeluaran Cash</p>
+                  <p className="font-semibold text-sm text-destructive mt-0.5">−{formatRp(summary.cashExpenses)}</p>
+                </div>
               )}
-              <div className="bg-muted/30 rounded-lg p-3"><p className="text-xs text-muted-foreground">Kas Seharusnya</p><p className="font-bold text-foreground mt-0.5">{formatRp(summary.expectedCash)}</p><p className="text-[10px] text-muted-foreground mt-0.5">awal + tunai masuk{summary.cashExpenses > 0 ? " − pengeluaran" : ""}</p></div>
-              <div className="bg-muted/30 rounded-lg p-3"><p className="text-xs text-muted-foreground">Kas Aktual</p><p className="font-bold text-foreground mt-0.5">{formatRp(summary.shift.closingCash!)}</p></div>
-              <div className={`rounded-lg p-3 ${summary.variance === 0 ? "bg-green-500/10" : summary.variance > 0 ? "bg-blue-500/10" : "bg-destructive/10"}`}>
-                <p className="text-xs text-muted-foreground">Selisih</p>
-                <p className={`font-bold mt-0.5 ${summary.variance === 0 ? "text-green-400" : summary.variance > 0 ? "text-blue-400" : "text-destructive"}`}>
-                  {summary.variance > 0 ? "+" : ""}{formatRp(summary.variance)}
-                </p>
-              </div>
             </div>
-            {summary.variance !== 0 && (
-              <div className={`flex items-start gap-2 rounded-lg p-3 text-sm ${summary.variance > 0 ? "bg-blue-500/10 text-blue-300" : "bg-destructive/10 text-destructive"}`}>
-                <AlertCircle size={15} className="mt-0.5 shrink-0" />
-                <span>{summary.variance > 0 ? `Kas lebih ${formatRp(summary.variance)} dari yang diharapkan.` : `Kas kurang ${formatRp(Math.abs(summary.variance))} dari yang diharapkan.`}</span>
-              </div>
-            )}
             <button onClick={() => setSummary(null)} className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90">Tutup</button>
           </div>
         </div>
@@ -274,40 +263,21 @@ export default function Shifts() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
             <h3 className="font-bold text-foreground text-lg">Mulai Shift</h3>
-            {lastClosedShift && lastClosedShift.closingCash !== null && lastClosedShift.closingCash !== undefined ? (
-              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Wallet size={13} className="text-primary shrink-0" />
-                  <p className="text-xs font-semibold text-primary">Kas dari shift sebelumnya</p>
-                </div>
-                <p className="text-lg font-bold text-foreground">{formatRp(lastClosedShift.closingCash)}</p>
-                <p className="text-xs text-muted-foreground">Ditutup oleh <span className="text-foreground font-medium">{lastClosedShift.userName}</span> pukul {formatTime(lastClosedShift.endTime!)}.</p>
-                <button onClick={() => setOpeningCash(String(lastClosedShift.closingCash))} className="text-xs text-primary hover:underline font-medium">
-                  Gunakan jumlah ini ({formatRp(lastClosedShift.closingCash)})
-                </button>
+            <div className="bg-muted/20 border border-border rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={13} className="text-primary shrink-0" />
+                <p className="text-xs text-muted-foreground">Shift akan dimulai sekarang. Semua transaksi dalam periode ini akan tercatat.</p>
               </div>
-            ) : (
-              <div className="bg-muted/20 border border-border rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <AlertCircle size={13} className="text-muted-foreground shrink-0" />
-                  <p className="text-xs text-muted-foreground">Belum ada riwayat shift. Hitung uang kas yang ada di laci kasir sekarang.</p>
-                </div>
-              </div>
-            )}
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Kas Awal — Uang di Laci Kasir (Rp)</label>
-              <input value={openingCash} onChange={(e) => setOpeningCash(e.target.value)} placeholder="0" type="number" className={inputClass} autoFocus />
-              <p className="text-xs text-muted-foreground mt-1">Hitung fisik uang tunai di laci kasir sebelum shift dimulai.</p>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Catatan (opsional)</label>
-              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="cth. Shift pagi, Shift malam..." className={inputClass} />
+              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="cth. Shift pagi, Shift malam..." className={inputClass} autoFocus />
             </div>
             <div className="flex gap-2">
               <button onClick={handleStart} disabled={startShift.isPending} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
                 <Play size={14} /> {startShift.isPending ? "Memulai..." : "Mulai Shift"}
               </button>
-              <button onClick={() => { setShowStart(false); setOpeningCash(""); setNotes(""); }} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
+              <button onClick={() => { setShowStart(false); setNotes(""); }} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
             </div>
           </div>
         </div>
@@ -318,23 +288,19 @@ export default function Shifts() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-card-border rounded-xl p-6 w-full max-w-sm space-y-4">
             <h3 className="font-bold text-foreground text-lg">Tutup Shift</h3>
-            <div className="bg-muted/20 rounded-lg p-3 text-sm">
+            <div className="bg-muted/20 rounded-lg p-3 text-sm space-y-1">
               <p className="text-muted-foreground">Shift dimulai: <span className="text-foreground font-medium">{formatTime(activeShift.startTime)}</span></p>
-              <p className="text-muted-foreground mt-1">Kas awal: <span className="text-foreground font-medium">{formatRp(activeShift.openingCash)}</span></p>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Hitung Kas Aktual (Rp)</label>
-              <input value={closingCash} onChange={(e) => setClosingCash(e.target.value)} placeholder="0" type="number" className={inputClass} autoFocus />
+              <p className="text-muted-foreground">Durasi: <span className="text-foreground font-medium">{formatDuration(activeShift.startTime)}</span></p>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Catatan Serah Terima (opsional)</label>
-              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan untuk shift berikutnya..." className={inputClass} />
+              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan untuk shift berikutnya..." className={inputClass} autoFocus />
             </div>
             <div className="flex gap-2">
               <button onClick={handleEnd} disabled={endShift.isPending} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90 disabled:opacity-50">
                 <StopCircle size={14} /> {endShift.isPending ? "Menutup..." : "Tutup Shift"}
               </button>
-              <button onClick={() => { setShowEnd(false); setClosingCash(""); setNotes(""); }} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
+              <button onClick={() => { setShowEnd(false); setNotes(""); }} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
             </div>
           </div>
         </div>
@@ -345,13 +311,8 @@ export default function Shifts() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-destructive/30 rounded-xl p-6 w-full max-w-sm space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-destructive/15 rounded-full flex items-center justify-center">
-                <AlertTriangle size={20} className="text-destructive" />
-              </div>
-              <div>
-                <h3 className="font-bold text-foreground">Hapus Riwayat Shift?</h3>
-                <p className="text-xs text-muted-foreground">Aksi ini tidak dapat dibatalkan</p>
-              </div>
+              <div className="w-10 h-10 bg-destructive/15 rounded-full flex items-center justify-center"><AlertTriangle size={20} className="text-destructive" /></div>
+              <div><h3 className="font-bold text-foreground">Hapus Riwayat Shift?</h3><p className="text-xs text-muted-foreground">Aksi ini tidak dapat dibatalkan</p></div>
             </div>
             <p className="text-sm text-muted-foreground">Data shift ini akan dihapus permanen dari riwayat. Transaksi yang terkait tidak akan terhapus.</p>
             <div className="flex gap-2">
@@ -360,6 +321,26 @@ export default function Shifts() {
                 {deleting ? "Menghapus..." : "Ya, Hapus"}
               </button>
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Force End Confirm Modal */}
+      {forceEndId !== null && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-orange-500/30 rounded-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-500/15 rounded-full flex items-center justify-center"><AlertCircle size={20} className="text-orange-400" /></div>
+              <div><h3 className="font-bold text-foreground">Paksa Tutup Shift?</h3><p className="text-xs text-muted-foreground">Shift dari akun yang tidak dapat mengakhirinya sendiri</p></div>
+            </div>
+            <p className="text-sm text-muted-foreground">Shift ini akan ditutup paksa. Aksi ini hanya dilakukan jika karyawan terkait tidak dapat menutup shift sendiri (misalnya akun sudah dihapus).</p>
+            <div className="flex gap-2">
+              <button onClick={() => handleForceEnd(forceEndId)} disabled={forcingEnd}
+                className="flex-1 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
+                {forcingEnd ? "Menutup..." : "Ya, Tutup Paksa"}
+              </button>
+              <button onClick={() => setForceEndId(null)} className="flex-1 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80">Batal</button>
             </div>
           </div>
         </div>
@@ -387,21 +368,15 @@ export default function Shifts() {
               <p className="text-sm font-medium text-foreground">{formatTime(activeShift.startTime)}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          {activeShift.notes && (
             <div className="bg-muted/20 rounded-lg p-3">
-              <div className="flex items-center gap-1.5 mb-1"><Wallet size={12} className="text-muted-foreground" /><span className="text-xs text-muted-foreground">Kas Awal</span></div>
-              <p className="font-semibold text-sm text-foreground">{formatRp(activeShift.openingCash)}</p>
+              <p className="text-xs text-muted-foreground mb-0.5">Catatan</p>
+              <p className="text-sm text-foreground">{activeShift.notes}</p>
             </div>
-            {activeShift.notes && (
-              <div className="bg-muted/20 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground mb-1">Catatan</p>
-                <p className="text-sm text-foreground truncate">{activeShift.notes}</p>
-              </div>
-            )}
-          </div>
-          <button onClick={() => { setShowEnd(true); setNotes(""); setClosingCash(""); }}
+          )}
+          <button onClick={() => { setShowEnd(true); setNotes(""); }}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20 transition-colors">
-            <StopCircle size={14} /> Tutup Shift & Hitung Kas
+            <StopCircle size={14} /> Tutup Shift
           </button>
         </div>
       ) : (
@@ -411,12 +386,36 @@ export default function Shifts() {
           </div>
           <div>
             <p className="font-semibold text-foreground">Belum Ada Shift Aktif</p>
-            <p className="text-sm text-muted-foreground mt-1">Mulai shift untuk mencatat kas dan transaksi kamu</p>
+            <p className="text-sm text-muted-foreground mt-1">Mulai shift untuk mencatat waktu kerja dan transaksimu</p>
           </div>
-          <button onClick={() => { setShowStart(true); setOpeningCash(""); setNotes(""); }}
+          <button onClick={() => { setShowStart(true); setNotes(""); }}
             className="mx-auto flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90">
             <Play size={14} /> Mulai Shift
           </button>
+        </div>
+      )}
+
+      {/* Superadmin: Orphaned Shifts */}
+      {isSuperAdmin && orphanShifts.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={14} className="text-orange-400" />
+            <h2 className="text-sm font-semibold text-orange-400 uppercase tracking-wide">Shift Tidak Aktif (Akun Dihapus)</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">Shift berikut tidak dapat ditutup oleh penggunanya. Tutup paksa jika diperlukan.</p>
+          {orphanShifts.map((s) => (
+            <div key={s.id} className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">{s.userName} <span className="text-xs text-muted-foreground font-normal">({s.role})</span></p>
+                <p className="text-xs text-muted-foreground mt-0.5">Dimulai {formatDateTime(s.startTime)} · Durasi {formatDuration(s.startTime)}</p>
+                {s.notes && <p className="text-xs text-muted-foreground mt-0.5">Catatan: {s.notes}</p>}
+              </div>
+              <button onClick={() => setForceEndId(s.id)}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/15 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/25">
+                <StopCircle size={12} /> Tutup Paksa
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -424,9 +423,7 @@ export default function Shifts() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Riwayat Shift</h2>
-          {isSuperAdmin && (
-            <p className="text-xs text-muted-foreground">Superadmin dapat menghapus riwayat</p>
-          )}
+          {isSuperAdmin && <p className="text-xs text-muted-foreground">Superadmin dapat menghapus riwayat</p>}
         </div>
         {loadingList ? (
           <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="bg-card border border-card-border rounded-xl p-4 h-16 animate-pulse" />)}</div>
@@ -436,9 +433,6 @@ export default function Shifts() {
           <div className="space-y-2">
             {allShifts.map((shift) => {
               const isExpanded = expandedId === shift.id;
-              const variance = shift.closingCash !== null && shift.closingCash !== undefined
-                ? shift.closingCash - shift.openingCash
-                : null;
               return (
                 <div key={shift.id} className="bg-card border border-card-border rounded-xl overflow-hidden">
                   <div className="flex items-center">
@@ -458,16 +452,9 @@ export default function Shifts() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 ml-2">
-                        <div className="text-right">
-                          <span className={`inline-flex px-2 py-0.5 text-xs rounded-full font-medium ${shift.status === "open" ? "bg-green-500/15 text-green-400" : "bg-muted text-muted-foreground"}`}>
-                            {shift.status === "open" ? "Berjalan" : "Selesai"}
-                          </span>
-                          {variance !== null && (
-                            <p className={`text-xs mt-0.5 font-medium ${variance === 0 ? "text-chart-3" : variance > 0 ? "text-blue-400" : "text-destructive"}`}>
-                              {variance > 0 ? `+${formatRp(variance)}` : variance < 0 ? formatRp(variance) : "Sesuai"}
-                            </p>
-                          )}
-                        </div>
+                        <span className={`inline-flex px-2 py-0.5 text-xs rounded-full font-medium ${shift.status === "open" ? "bg-green-500/15 text-green-400" : "bg-muted text-muted-foreground"}`}>
+                          {shift.status === "open" ? "Berjalan" : "Selesai"}
+                        </span>
                         {isExpanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
                       </div>
                     </button>
@@ -485,16 +472,6 @@ export default function Shifts() {
                   {isExpanded && (
                     <div className="px-4 pb-4 pt-0 border-t border-border bg-muted/5">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-3">
-                        <div className="bg-muted/20 rounded-lg p-2.5">
-                          <p className="text-[10px] text-muted-foreground">Kas Awal</p>
-                          <p className="text-sm font-semibold text-foreground mt-0.5">{formatRp(shift.openingCash)}</p>
-                        </div>
-                        {shift.closingCash !== null && shift.closingCash !== undefined && (
-                          <div className="bg-muted/20 rounded-lg p-2.5">
-                            <p className="text-[10px] text-muted-foreground">Kas Akhir</p>
-                            <p className="text-sm font-semibold text-foreground mt-0.5">{formatRp(shift.closingCash)}</p>
-                          </div>
-                        )}
                         {shift.notes && (
                           <div className="bg-muted/20 rounded-lg p-2.5 col-span-2">
                             <p className="text-[10px] text-muted-foreground">Catatan Serah Terima</p>
