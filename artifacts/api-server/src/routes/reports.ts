@@ -5,86 +5,131 @@ import { requireAuth, requireRole } from "../middleware/auth";
 
 const router = Router();
 
+// ── Timezone helpers (WIB = UTC+7) ──────────────────────────────────────────
+const WIB = "Asia/Jakarta";
+
+/** Returns today's date as "YYYY-MM-DD" in WIB timezone */
+function wibTodayStr(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: WIB });
+}
+
+/** Parse "YYYY-MM-DD" as start-of-day in WIB, returns a proper UTC Date */
+function wibDayStart(dateStr: string): Date {
+  return new Date(dateStr + "T00:00:00+07:00");
+}
+
+/** Parse "YYYY-MM-DD" as end-of-day in WIB, returns a proper UTC Date */
+function wibDayEnd(dateStr: string): Date {
+  return new Date(dateStr + "T23:59:59.999+07:00");
+}
+
+/** Return "YYYY-MM-DD" for a date shifted by `days` from a YYYY-MM-DD string */
+function shiftDay(dateStr: string, days: number): string {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, mo - 1, d + days);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
+/** First day of month as "YYYY-MM-DD" given year + 0-based month index */
+function firstOfMonth(year: number, month0: number): string {
+  const dt = new Date(year, month0, 1);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+/** Last day of month as "YYYY-MM-DD" given year + 0-based month index */
+function lastOfMonth(year: number, month0: number): string {
+  const dt = new Date(year, month0 + 1, 0);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getDateRange(
   period: string,
   opts?: { customDate?: string; startDate?: string; endDate?: string }
 ): { start: Date; end: Date; groupBy: "hour" | "day" | "month" } {
-  const now = new Date();
   const { customDate, startDate, endDate } = opts ?? {};
 
-  // Custom date range (for period navigation — prev/next buttons)
+  // Custom date range from frontend (always preferred) — parse as WIB dates
   if (startDate && endDate) {
-    const start = new Date(startDate + "T00:00:00");
-    const end = new Date(endDate + "T23:59:59.999");
-    const diffDays = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+    const start = wibDayStart(startDate);
+    const end = wibDayEnd(endDate);
+    const diffDays = Math.round((end.getTime() - start.getTime()) / 86400000);
     const groupBy: "hour" | "day" | "month" = diffDays <= 1 ? "hour" : diffDays <= 62 ? "day" : "month";
     return { start, end, groupBy };
   }
 
   // Legacy: single custom date for daily period
   if (customDate) {
-    const d = new Date(customDate);
-    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-    return { start, end, groupBy: "hour" };
+    return { start: wibDayStart(customDate), end: wibDayEnd(customDate), groupBy: "hour" };
   }
 
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  // Fallback: derive from period (uses WIB today)
+  const todayStr = wibTodayStr();
+  const [y, mo] = todayStr.split("-").map(Number);
+  const m0 = mo - 1; // 0-based month
+  const now = new Date();
+  const todayStart = wibDayStart(todayStr);
 
   switch (period) {
     case "daily":
       return { start: todayStart, end: now, groupBy: "hour" };
-    case "weekly": {
-      const s = new Date(todayStart); s.setDate(s.getDate() - 6);
-      return { start: s, end: now, groupBy: "day" };
-    }
-    case "monthly": {
-      const s = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { start: s, end: now, groupBy: "day" };
-    }
-    case "3month": {
-      const s = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-      return { start: s, end: now, groupBy: "month" };
-    }
-    case "6month": {
-      const s = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      return { start: s, end: now, groupBy: "month" };
-    }
-    case "yearly": {
-      const s = new Date(now.getFullYear(), 0, 1);
-      return { start: s, end: now, groupBy: "month" };
-    }
+    case "weekly":
+      return { start: wibDayStart(shiftDay(todayStr, -6)), end: now, groupBy: "day" };
+    case "monthly":
+      return { start: wibDayStart(firstOfMonth(y, m0)), end: now, groupBy: "day" };
+    case "3month":
+      return { start: wibDayStart(firstOfMonth(y, m0 - 2)), end: now, groupBy: "month" };
+    case "6month":
+      return { start: wibDayStart(firstOfMonth(y, m0 - 5)), end: now, groupBy: "month" };
+    case "yearly":
+      return { start: wibDayStart(`${y}-01-01`), end: now, groupBy: "month" };
     default:
       return { start: todayStart, end: now, groupBy: "hour" };
   }
 }
 
 function getPeriodKey(date: Date, groupBy: "hour" | "day" | "month"): string {
-  if (groupBy === "hour") return `${date.getHours().toString().padStart(2, "0")}:00`;
-  if (groupBy === "day") {
-    return date.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" });
+  if (groupBy === "hour") {
+    return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: WIB, hour12: false }).substring(0, 5).replace(".", ":").substring(0, 2) + ":00";
   }
-  return date.toLocaleDateString("id-ID", { month: "short", year: "numeric" });
+  if (groupBy === "day") {
+    return date.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: WIB });
+  }
+  return date.toLocaleDateString("id-ID", { month: "short", year: "numeric", timeZone: WIB });
 }
 
 function buildPeriodLabels(start: Date, end: Date, groupBy: "hour" | "day" | "month"): string[] {
   const labels: string[] = [];
-  const cur = new Date(start);
   if (groupBy === "hour") {
     for (let h = 0; h <= 23; h++) {
-      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate(), h);
-      if (d <= end) labels.push(getPeriodKey(d, "hour"));
+      const label = `${String(h).padStart(2, "0")}:00`;
+      const slotStart = new Date(start);
+      // slot in WIB: build a Date at h:00 WIB on start day
+      const startWIBStr = start.toLocaleDateString("en-CA", { timeZone: WIB });
+      const slotDate = new Date(`${startWIBStr}T${String(h).padStart(2, "0")}:00:00+07:00`);
+      if (slotDate <= end) labels.push(label);
     }
   } else if (groupBy === "day") {
-    while (cur <= end) {
-      labels.push(getPeriodKey(cur, "day"));
-      cur.setDate(cur.getDate() + 1);
+    // Walk day by day in WIB
+    const startWIBStr = start.toLocaleDateString("en-CA", { timeZone: WIB });
+    const endWIBStr = end.toLocaleDateString("en-CA", { timeZone: WIB });
+    let cur = startWIBStr;
+    while (cur <= endWIBStr) {
+      labels.push(wibDayStart(cur).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: WIB }));
+      cur = shiftDay(cur, 1);
     }
   } else {
-    cur.setDate(1);
-    while (cur <= end) {
-      labels.push(getPeriodKey(cur, "month"));
-      cur.setMonth(cur.getMonth() + 1);
+    // Walk month by month in WIB
+    const startWIBStr = start.toLocaleDateString("en-CA", { timeZone: WIB });
+    const endWIBStr = end.toLocaleDateString("en-CA", { timeZone: WIB });
+    const [sy, sm] = startWIBStr.split("-").map(Number);
+    const [ey, em] = endWIBStr.split("-").map(Number);
+    let cy = sy, cm = sm;
+    while (cy < ey || (cy === ey && cm <= em)) {
+      const d = new Date(cy, cm - 1, 1);
+      labels.push(d.toLocaleDateString("id-ID", { month: "short", year: "numeric" }));
+      cm++;
+      if (cm > 12) { cm = 1; cy++; }
     }
   }
   return labels;
@@ -152,8 +197,8 @@ router.get("/reports/financial", requireAuth, requireRole("admin", "superadmin")
       totalCostAmount,
       grossMargin,
       netProfit,
-      startDate: start.toISOString().split("T")[0],
-      endDate: end.toISOString().split("T")[0],
+      startDate: start.toLocaleDateString("en-CA", { timeZone: WIB }),
+      endDate: end.toLocaleDateString("en-CA", { timeZone: WIB }),
     },
     periods,
     transactions: transactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -166,8 +211,10 @@ router.get("/reports/employees", requireAuth, requireRole("admin", "superadmin")
   const startDate = req.query.startDate as string | undefined;
   const endDate = req.query.endDate as string | undefined;
   const now = new Date();
-  const start = startDate ? new Date(startDate + "T00:00:00") : new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = endDate ? new Date(endDate + "T23:59:59.999") : now;
+  const todayWIB = wibTodayStr();
+  const [ty, tm] = todayWIB.split("-").map(Number);
+  const start = startDate ? wibDayStart(startDate) : wibDayStart(`${ty}-${String(tm).padStart(2,"0")}-01`);
+  const end = endDate ? wibDayEnd(endDate) : now;
 
   const [txRows, shiftRows] = await Promise.all([
     db.select({

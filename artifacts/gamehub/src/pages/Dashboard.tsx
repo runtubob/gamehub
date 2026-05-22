@@ -54,7 +54,7 @@ export default function Dashboard() {
     if (productPeriod !== "daily" || productDateOffset === 0) return undefined;
     const d = new Date();
     d.setDate(d.getDate() + productDateOffset);
-    return d.toISOString().split("T")[0];
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   })();
   const productDateLabel = (() => {
     if (productPeriod !== "daily") return null;

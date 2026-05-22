@@ -23,11 +23,19 @@ const PERIODS: { key: Period; label: string }[] = [
 ];
 
 function formatRp(n: number) { return "Rp " + n.toLocaleString("id-ID"); }
-function fmt(d: string) { return new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }); }
+function fmt(d: string) { return new Date(d + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }); }
 function fmtShort(d: string | Date) { return new Date(d).toLocaleString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); }
 function fmtDateOnly(d: string | Date) { return new Date(d).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }); }
 function fmtTimeOnly(d: string | Date) { return new Date(d).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }); }
 function nowStr() { return new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }); }
+
+// Format Date ke YYYY-MM-DD pakai waktu LOKAL (bukan UTC) agar tidak geser hari di timezone UTC+7
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${dd}`;
+}
 
 function getPeriodRange(period: Period, offset: number): { startDate: string; endDate: string; label: string } {
   const now = new Date();
@@ -37,7 +45,7 @@ function getPeriodRange(period: Period, offset: number): { startDate: string; en
   if (period === "daily") {
     const d = new Date(todayStart);
     d.setDate(d.getDate() + offset);
-    const iso = d.toISOString().split("T")[0];
+    const iso = localDateStr(d);
     const label = offset === 0 ? "Hari Ini" : d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     return { startDate: iso, endDate: iso, label };
   }
@@ -48,8 +56,8 @@ function getPeriodRange(period: Period, offset: number): { startDate: string; en
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     return {
-      startDate: weekStart.toISOString().split("T")[0],
-      endDate: weekEnd.toISOString().split("T")[0],
+      startDate: localDateStr(weekStart),
+      endDate: localDateStr(weekEnd),
       label: `${weekStart.toLocaleDateString("id-ID", { day: "numeric", month: "short" })} – ${weekEnd.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}`,
     };
   }
@@ -57,8 +65,8 @@ function getPeriodRange(period: Period, offset: number): { startDate: string; en
     const d = new Date(y, m + offset, 1);
     const endD = new Date(y, m + offset + 1, 0);
     return {
-      startDate: d.toISOString().split("T")[0],
-      endDate: endD.toISOString().split("T")[0],
+      startDate: localDateStr(d),
+      endDate: localDateStr(endD),
       label: d.toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
     };
   }
@@ -67,8 +75,8 @@ function getPeriodRange(period: Period, offset: number): { startDate: string; en
     const endD = new Date(y, em + 1, 0);
     const startD = new Date(y, em - 2, 1);
     return {
-      startDate: startD.toISOString().split("T")[0],
-      endDate: endD.toISOString().split("T")[0],
+      startDate: localDateStr(startD),
+      endDate: localDateStr(endD),
       label: `${startD.toLocaleDateString("id-ID", { month: "short", year: "numeric" })} – ${endD.toLocaleDateString("id-ID", { month: "short", year: "numeric" })}`,
     };
   }
@@ -77,8 +85,8 @@ function getPeriodRange(period: Period, offset: number): { startDate: string; en
     const endD = new Date(y, em + 1, 0);
     const startD = new Date(y, em - 5, 1);
     return {
-      startDate: startD.toISOString().split("T")[0],
-      endDate: endD.toISOString().split("T")[0],
+      startDate: localDateStr(startD),
+      endDate: localDateStr(endD),
       label: `${startD.toLocaleDateString("id-ID", { month: "short", year: "numeric" })} – ${endD.toLocaleDateString("id-ID", { month: "short", year: "numeric" })}`,
     };
   }

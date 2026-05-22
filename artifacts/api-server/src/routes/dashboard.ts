@@ -4,10 +4,20 @@ import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 
 const router = Router();
 
+// WIB timezone helpers
+const WIB = "Asia/Jakarta";
+function wibTodayStr(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: WIB });
+}
+function wibDayStart(dateStr: string): Date { return new Date(dateStr + "T00:00:00+07:00"); }
+function wibDayEnd(dateStr: string): Date { return new Date(dateStr + "T23:59:59.999+07:00"); }
+function wibDayStr(d: Date): string { return d.toLocaleDateString("en-CA", { timeZone: WIB }); }
+
 router.get("/dashboard", async (req, res) => {
   const now = new Date();
-  const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
-  const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
+  const todayWIB = wibTodayStr();
+  const startOfToday = wibDayStart(todayWIB);
+  const endOfToday = wibDayEnd(todayWIB);
   const todayRange = and(gte(transactionsTable.createdAt, startOfToday), lte(transactionsTable.createdAt, endOfToday));
 
   const [todayIncomeResult] = await db
@@ -59,14 +69,17 @@ router.get("/dashboard", async (req, res) => {
 
   const weeklyIncome = [];
   for (let i = 6; i >= 0; i--) {
-    const day = new Date(now); day.setDate(day.getDate() - i);
-    const startOfDay = new Date(day); startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(day); endOfDay.setHours(23, 59, 59, 999);
+    // compute date string i days ago in WIB
+    const [ty, tm, td] = todayWIB.split("-").map(Number);
+    const dayDt = new Date(ty, tm - 1, td - i);
+    const dayStr = `${dayDt.getFullYear()}-${String(dayDt.getMonth()+1).padStart(2,"0")}-${String(dayDt.getDate()).padStart(2,"0")}`;
+    const startOfDay = wibDayStart(dayStr);
+    const endOfDay = wibDayEnd(dayStr);
     const [result] = await db
       .select({ total: sql<number>`coalesce(sum(${transactionsTable.amount}), 0)` })
       .from(transactionsTable)
       .where(and(gte(transactionsTable.createdAt, startOfDay), lte(transactionsTable.createdAt, endOfDay)));
-    weeklyIncome.push({ date: day.toISOString().split("T")[0], income: Number(result?.total ?? 0) });
+    weeklyIncome.push({ date: dayStr, income: Number(result?.total ?? 0) });
   }
 
   // Top units (all time)
@@ -149,29 +162,33 @@ router.get("/dashboard/top-products", async (req, res) => {
   let startDate: Date;
   let endDate: Date;
   if (dateParam) {
-    startDate = new Date(dateParam + "T00:00:00");
-    endDate = new Date(dateParam + "T23:59:59.999");
+    startDate = wibDayStart(dateParam);
+    endDate = wibDayEnd(dateParam);
   } else {
     endDate = now;
-    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+    const todayWIBStr = wibTodayStr();
+    const [ty, tm] = todayWIBStr.split("-").map(Number);
     switch (period) {
       case "weekly": {
-        startDate = new Date(todayStart); startDate.setDate(startDate.getDate() - 6);
+        const [y, mo, d] = todayWIBStr.split("-").map(Number);
+        const s = new Date(y, mo - 1, d - 6);
+        const sStr = `${s.getFullYear()}-${String(s.getMonth()+1).padStart(2,"0")}-${String(s.getDate()).padStart(2,"0")}`;
+        startDate = wibDayStart(sStr);
         break;
       }
       case "monthly": {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate = wibDayStart(`${ty}-${String(tm).padStart(2,"0")}-01`);
         break;
       }
       case "yearly": {
-        startDate = new Date(now.getFullYear(), 0, 1);
+        startDate = wibDayStart(`${ty}-01-01`);
         break;
       }
       case "all":
         startDate = new Date(2000, 0, 1);
         break;
       default:
-        startDate = todayStart;
+        startDate = wibDayStart(todayWIBStr);
     }
   }
 

@@ -12,7 +12,7 @@ function formatTime(d: string | Date) {
   return new Date(d).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 
 export default function Expenses() {
   const [date, setDate] = useState(todayStr());

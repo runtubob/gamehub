@@ -12,7 +12,7 @@ function formatRp(n: number) { return "Rp " + n.toLocaleString("id-ID"); }
 function formatDateTime(dateStr: string | Date) {
   return new Date(dateStr).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
-function todayString() { return new Date().toISOString().split("T")[0]; }
+function todayString() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 
 export default function Transactions() {
   const { user } = useAuth();

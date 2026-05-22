@@ -80,7 +80,7 @@ function getStatusFromSchedule(checkInTime: string | Date | null | undefined, we
   return checkInMinutes > schedMinutes ? "late" : "ontime";
 }
 
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const inputClass = "w-full px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 type EditModal = { id: number; userName: string; checkIn: string; checkOut: string; notes: string } | null;
