@@ -103,13 +103,14 @@ router.get("/reports/financial", requireAuth, requireRole("admin", "superadmin")
   ]);
 
   const labels = buildPeriodLabels(start, end, groupBy);
-  const periodMap = new Map<string, { income: number; rentalIncome: number; productIncome: number; cashIncome: number; qrisIncome: number; expenses: number; cashExpenses: number; qrisExpenses: number; profit: number }>();
-  labels.forEach((l) => periodMap.set(l, { income: 0, rentalIncome: 0, productIncome: 0, cashIncome: 0, qrisIncome: 0, expenses: 0, cashExpenses: 0, qrisExpenses: 0, profit: 0 }));
+  const periodMap = new Map<string, { income: number; costAmount: number; rentalIncome: number; productIncome: number; cashIncome: number; qrisIncome: number; expenses: number; cashExpenses: number; qrisExpenses: number; profit: number }>();
+  labels.forEach((l) => periodMap.set(l, { income: 0, costAmount: 0, rentalIncome: 0, productIncome: 0, cashIncome: 0, qrisIncome: 0, expenses: 0, cashExpenses: 0, qrisExpenses: 0, profit: 0 }));
 
   for (const tx of transactions) {
     const key = getPeriodKey(new Date(tx.createdAt), groupBy);
-    const entry = periodMap.get(key) ?? { income: 0, rentalIncome: 0, productIncome: 0, cashIncome: 0, qrisIncome: 0, expenses: 0, cashExpenses: 0, qrisExpenses: 0, profit: 0 };
+    const entry = periodMap.get(key) ?? { income: 0, costAmount: 0, rentalIncome: 0, productIncome: 0, cashIncome: 0, qrisIncome: 0, expenses: 0, cashExpenses: 0, qrisExpenses: 0, profit: 0 };
     entry.income += tx.amount;
+    entry.costAmount += tx.costAmount ?? 0;
     if (tx.type === "rental") entry.rentalIncome += tx.amount;
     else entry.productIncome += tx.amount;
     if (tx.paymentMethod === "cash") entry.cashIncome += tx.amount;
@@ -119,7 +120,7 @@ router.get("/reports/financial", requireAuth, requireRole("admin", "superadmin")
 
   for (const exp of expenses) {
     const key = getPeriodKey(new Date(exp.createdAt), groupBy);
-    const entry = periodMap.get(key) ?? { income: 0, rentalIncome: 0, productIncome: 0, cashIncome: 0, qrisIncome: 0, expenses: 0, cashExpenses: 0, qrisExpenses: 0, profit: 0 };
+    const entry = periodMap.get(key) ?? { income: 0, costAmount: 0, rentalIncome: 0, productIncome: 0, cashIncome: 0, qrisIncome: 0, expenses: 0, cashExpenses: 0, qrisExpenses: 0, profit: 0 };
     entry.expenses += exp.amount;
     if (exp.paymentMethod === "cash") entry.cashExpenses += exp.amount;
     else entry.qrisExpenses += exp.amount;
@@ -128,10 +129,12 @@ router.get("/reports/financial", requireAuth, requireRole("admin", "superadmin")
 
   const periods = labels.map((label) => {
     const e = periodMap.get(label)!;
-    return { label, ...e, profit: e.income - e.expenses };
+    const grossMargin = e.income - e.costAmount;
+    return { label, ...e, profit: grossMargin - e.expenses };
   });
 
   const totalIncome = transactions.reduce((s, t) => s + t.amount, 0);
+  const totalCostAmount = transactions.reduce((s, t) => s + (t.costAmount ?? 0), 0);
   const rentalIncome = transactions.filter((t) => t.type === "rental").reduce((s, t) => s + t.amount, 0);
   const productIncome = transactions.filter((t) => t.type === "product").reduce((s, t) => s + t.amount, 0);
   const cashIncome = transactions.filter((t) => t.paymentMethod === "cash").reduce((s, t) => s + t.amount, 0);
@@ -139,12 +142,16 @@ router.get("/reports/financial", requireAuth, requireRole("admin", "superadmin")
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const cashExpenses = expenses.filter((e) => e.paymentMethod === "cash").reduce((s, e) => s + e.amount, 0);
   const qrisExpenses = expenses.filter((e) => e.paymentMethod === "qris").reduce((s, e) => s + e.amount, 0);
+  const grossMargin = totalIncome - totalCostAmount;
+  const netProfit = grossMargin - totalExpenses;
 
   res.json({
     summary: {
       totalIncome, rentalIncome, productIncome, cashIncome, qrisIncome,
       totalExpenses, cashExpenses, qrisExpenses,
-      netProfit: totalIncome - totalExpenses,
+      totalCostAmount,
+      grossMargin,
+      netProfit,
       startDate: start.toISOString().split("T")[0],
       endDate: end.toISOString().split("T")[0],
     },

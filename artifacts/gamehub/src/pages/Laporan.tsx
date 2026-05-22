@@ -123,6 +123,7 @@ export default function Laporan() {
           if (!res.ok) throw new Error("Gagal memuat laporan");
           return res.json();
         },
+        refetchInterval: 15000,
       }
     }
   );
@@ -176,16 +177,20 @@ export default function Laporan() {
       ["  Metode Cash", summary.cashIncome],
       ["  Metode QRIS", summary.qrisIncome],
       [""],
-      ["PENGELUARAN"],
+      ["HPP / HARGA POKOK"],
+      ["Total HPP (Harga Modal)", summary.totalCostAmount ?? 0],
+      ["Laba Kotor (Pendapatan - HPP)", summary.grossMargin ?? summary.totalIncome],
+      [""],
+      ["PENGELUARAN OPERASIONAL"],
       ["Total Pengeluaran", summary.totalExpenses],
       ["  Cash Keluar", summary.cashExpenses],
       ["  QRIS Keluar", summary.qrisExpenses],
       [""],
-      ["KEUNTUNGAN BERSIH", summary.netProfit],
+      ["KEUNTUNGAN BERSIH (Laba Kotor - Pengeluaran)", summary.netProfit],
     ];
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
-    ws1["!cols"] = [{ wch: 30 }, { wch: 20 }];
-    [9, 10, 11, 12, 13, 17, 18, 19, 21].forEach((row) => {
+    ws1["!cols"] = [{ wch: 42 }, { wch: 20 }];
+    [9, 10, 11, 12, 13, 17, 18, 19, 21, 22, 23, 25].forEach((row) => {
       const cell = ws1[XLSX.utils.encode_cell({ r: row, c: 1 })];
       if (cell) cell.z = '#,##0';
     });
@@ -311,11 +316,14 @@ export default function Laporan() {
         ["  └─ Penjualan Produk", formatRp(summary.productIncome)],
         ["  ├─ Metode Cash", formatRp(summary.cashIncome)],
         ["  └─ Metode QRIS", formatRp(summary.qrisIncome)],
-        [{ content: "PENGELUARAN", colSpan: 2, styles: { fontStyle: "bold", fillColor: DARK, textColor: [255, 255, 255] as [number, number, number] } }],
+        [{ content: "HPP / HARGA POKOK", colSpan: 2, styles: { fontStyle: "bold", fillColor: DARK, textColor: [255, 255, 255] as [number, number, number] } }],
+        ["Total HPP (Harga Modal)", { content: formatRp(summary.totalCostAmount ?? 0), styles: { textColor: RED } }],
+        ["Laba Kotor (Pendapatan - HPP)", { content: formatRp(summary.grossMargin ?? summary.totalIncome), styles: { textColor: GREEN, fontStyle: "bold" } }],
+        [{ content: "PENGELUARAN OPERASIONAL", colSpan: 2, styles: { fontStyle: "bold", fillColor: DARK, textColor: [255, 255, 255] as [number, number, number] } }],
         ["Total Pengeluaran", { content: formatRp(summary.totalExpenses), styles: { textColor: RED, fontStyle: "bold" } }],
         ["  ├─ Pengeluaran Cash", formatRp(summary.cashExpenses)],
         ["  └─ Pengeluaran QRIS", formatRp(summary.qrisExpenses)],
-        [{ content: "KEUNTUNGAN BERSIH", styles: { fontStyle: "bold", fontSize: 10 } }, { content: formatRp(summary.netProfit), styles: { fontStyle: "bold", fontSize: 10, textColor: summary.netProfit >= 0 ? GREEN : RED } }],
+        [{ content: "KEUNTUNGAN BERSIH (Laba Kotor - Pengeluaran)", styles: { fontStyle: "bold", fontSize: 10 } }, { content: formatRp(summary.netProfit), styles: { fontStyle: "bold", fontSize: 10, textColor: summary.netProfit >= 0 ? GREEN : RED } }],
       ],
       theme: "grid",
       headStyles: { fillColor: BLUE, fontStyle: "bold", fontSize: 9, textColor: [255, 255, 255] },

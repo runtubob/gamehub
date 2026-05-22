@@ -29,8 +29,12 @@ const PRODUCT_PERIODS: { key: ProductPeriod; label: string }[] = [
 interface TopProduct { productId: number; productName: string; totalQty: number; totalRevenue: number; }
 
 export default function Dashboard() {
-  const { data: stats, isLoading: statsLoading } = useGetDashboard();
-  const { data: recent, isLoading: recentLoading } = useListRecentTransactions({ limit: 8 });
+  const { data: stats, isLoading: statsLoading } = useGetDashboard({
+    query: { refetchInterval: 10000 },
+  });
+  const { data: recent, isLoading: recentLoading } = useListRecentTransactions({ limit: 8 }, {
+    query: { refetchInterval: 10000 },
+  });
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
